@@ -9,7 +9,7 @@ from datetime import datetime
 from backend.backend_constants import CHECKOUT_URL, ITEM_URL, NAME_URL
 
 
-def get_name(barcode: str) -> tuple[str, str, str]:
+def get_name(barcode: str) -> tuple[str, str, str, list[str], list[datetime]]:
     """
     Gathers the name attached to a given barcode.
 
@@ -23,8 +23,9 @@ def get_name(barcode: str) -> tuple[str, str, str]:
 
     Returns
     -------
-    tuple[str, str, str]
-        A tuple of the first name, last name and their email.
+    tuple[str, str, str, list[str], list[datetime]]
+        A tuple of the first name, last name, their email, the items they
+        have currently borrowed and the time they borrowed them.
     """
     ...
 
@@ -51,7 +52,7 @@ def get_item(barcode: int) -> str:
 
 def checkout(
     user_info: dict[str, str | int | datetime],
-) -> list[tuple[str, datetime]]:
+) -> None:
     """
     From a given set of data representing the user info for a checkout,
     add that checkout to the database, and return the list of other
@@ -61,9 +62,7 @@ def checkout(
     their barcode ID, their email, the item that they want to checkout,
     the current date in which they are checking out, and the status of the item,
     send a POST request of this data to the checkout database and validate whether
-    this checkout is a return or a checkout. The database will then return all of
-    the checkouts that the user currently has to make the user aware if they are
-    still holding any items. This does not include items that are marked as lost.
+    this checkout is a return or a checkout.
 
     Parameters
     ----------
@@ -77,14 +76,8 @@ def checkout(
             "Email": str
             "Item ID": int - A set of 5 numbers.
             "Date Borrowed": datetime - The date and time the user borrowed the item.
-            "Status": str - borrowed, in stock, missing
+            "Status": Status (StrEnum) (Borrowed, In Stock, Missing)
         }
-
-    Returns
-    -------
-    list[tuple[str, datetime]]
-        A list of tuples with a given item that the user currently
-        has borrowed and the time that they borrowed it.
     """
     ...
 
