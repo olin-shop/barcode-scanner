@@ -94,7 +94,7 @@ def request_borrowed_items() -> list[tuple[Any]]:
     Requests a list of all of the borrowed items.
 
     Requests a list of all of the currently borrowed items for reminder purposes.
-    Will send a POST request to our database pipeline, which will then separately be received.
+    Will send a GET request to our database pipeline, which will then separately be received.
 
     Returns
     -------

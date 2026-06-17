@@ -39,7 +39,7 @@ def get_name() -> Response:
     return jsonify([])
 
 
-@flask_app.route("/borrowed-items", methods=["POST"])
+@flask_app.route("/borrowed-items", methods=["GET"])
 def request_borrowed_items() -> Response:
     """
     The borrowed items route.
