@@ -36,7 +36,7 @@ class App(ctk.CTk):
                 relheight=1
             )
 
-        self.show_frame("SessionTimeoutPage")
+        self.show_frame("ScanIDPage")
 
     def show_frame(self, page_name):
         self.frames[page_name].tkraise()
@@ -475,6 +475,7 @@ class SessionTimeoutPage(ctk.CTkFrame):
 
 
 from datetime import datetime
+import threading
 
 app = App()
 
@@ -485,5 +486,38 @@ test_items = [
     ("Soldering Iron",datetime(2025, 6, 16, 13, 45)),
 ]
 app.frames["BorrowedItemsPage"].refresh(test_items)
+
+VALID_PAGES = [
+    "ScanIDPage",
+    "BorrowedItemsPage",
+    "ConfirmBorrowPage",
+    "ConfirmReturnPage",
+    "FinalConfirmationPage",
+    "SessionTimeoutPage",
+]
+
+def terminal_input_loop():
+    while True:
+        try:
+            user_input = input("Enter page name: ").strip()
+        except EOFError:
+            break
+
+        if not user_input:
+            continue
+
+        # Case-insensitive match
+        match = next((p for p in VALID_PAGES if p.lower() == user_input.lower()), None)
+
+        if match:
+            app.after(0, lambda m=match: app.show_frame(m))
+            print(f"  → Switched to {match}")
+        else:
+            print(f"  ✗ Unknown page '{user_input}'. Valid pages:")
+            for p in VALID_PAGES:
+                print(f"      {p}")
+
+input_thread = threading.Thread(target=terminal_input_loop, daemon=True)
+input_thread.start()
 
 app.mainloop()
