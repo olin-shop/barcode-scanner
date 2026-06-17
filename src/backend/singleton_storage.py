@@ -84,6 +84,9 @@ class CheckoutStorage(BaseStorage):
     borrowed_date: datetime = datetime.min
     status: Status = Status.NONE
 
+    # When changed, this will be True. Otherwise, False
+    on_change: bool = False
+
     safe_values: set[str] = {
         "first_name",
         "last_name",
@@ -112,6 +115,9 @@ class NameStorage(BaseStorage):
     last_name: str = ""
     email: str = ""
 
+    # When changed, this will be True. Otherwise, False
+    on_change: bool = False
+
     safe_values: set[str] = {"first_name", "last_name", "email"}
 
     def _validate_data(self, **kwargs) -> dict:
@@ -131,6 +137,9 @@ class ItemStorage(BaseStorage):
     item_id: int = 0
     item_name = ""
 
+    # When changed, this will be True. Otherwise, False
+    on_change: bool = False
+
     safe_values: set[str] = {"item_id", "item_name"}
 
     def _validate_data(self, **kwargs) -> dict:
@@ -149,6 +158,9 @@ class BorrowedItemsStorage(BaseStorage):
 
     borrowed_items: list[str] = []
     time_borrowed: list[datetime] = []
+
+    # When changed, this will be True. Otherwise, False
+    on_change: bool = False
 
     safe_values: set[str] = {"borrowed_items", "time_borrowed"}
 
