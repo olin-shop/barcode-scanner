@@ -6,7 +6,17 @@ All returns get handled at our endpoints.
 from typing import Any
 from datetime import datetime
 
-from backend.backend_constants import CHECKOUT_URL, ITEM_URL, NAME_URL
+from requests import get, post
+
+from backend.backend_constants import (
+    CHECKOUT_URL,
+    ITEM_URL,
+    NAME_URL,
+    BORROWED_ITEMS_URL,
+    TIMEOUT,
+    db_to_class_conversion,
+)
+from backend.backend_types import Status
 
 
 def get_name(barcode: str) -> tuple[str, str, str, list[str], list[datetime]]:
@@ -27,7 +37,14 @@ def get_name(barcode: str) -> tuple[str, str, str, list[str], list[datetime]]:
         A tuple of the first name, last name, their email, the items they
         have currently borrowed and the time they borrowed them.
     """
-    ...
+    send_json: dict[str, str] = {"Barcode": barcode}
+
+    try:
+        res = post(NAME_URL, json=send_json, timeout=TIMEOUT)
+        if res.status_code != 202 or res.status_code != 200:
+            raise ValueError("Something did not sendddddddd.")
+    except ValueError as e:
+        print(f"Error: {e}")
 
 
 def get_item(barcode: int) -> str:
@@ -47,11 +64,17 @@ def get_item(barcode: int) -> str:
     str
         The name of the item.
     """
-    ...
+    send_json: dict[str, int] = {"Item ID": barcode}
+    try:
+        res = post(ITEM_URL, json=send_json, timeout=TIMEOUT)
+        if res.status_code != 202 or res.status_code != 200:
+            raise ValueError("Something did not sendddddddd.")
+    except ValueError as e:
+        print(f"Error: {e}")
 
 
 def checkout(
-    user_info: dict[str, str | int | datetime],
+    user_info: dict[str, Any],
 ) -> None:
     """
     From a given set of data representing the user info for a checkout,
@@ -79,7 +102,34 @@ def checkout(
             "Status": Status (StrEnum) (Borrowed, In Stock, Missing)
         }
     """
-    ...
+    send_json: dict = {
+        "First Name": "",
+        "Last Name": "",
+        "ID": "",
+        "Email": "",
+        "Item ID": 0,
+        "Date Borrowed": "",
+        "Status": "",
+    }
+
+    for key in send_json:
+        user_info_key: str = db_to_class_conversion[key]
+        match user_info[user_info_key]:
+            case datetime():
+                send_json[key] = user_info[user_info_key].strftime("%Y-%m-%dT%H:%M:%SZ")
+            case str():
+                send_json[key] = user_info[user_info_key]
+            case int():
+                send_json[key] = user_info[user_info_key]
+            case Status():
+                send_json[key] = user_info[user_info_key].value
+
+    try:
+        res = post(CHECKOUT_URL, json=send_json, timeout=TIMEOUT)
+        if res.status_code != 202 or res.status_code != 200:
+            raise ValueError("Something did not sendddddddd.")
+    except ValueError as e:
+        print(f"Error: {e}")
 
 
 def request_borrowed_items() -> list[tuple[Any]]:
@@ -95,4 +145,9 @@ def request_borrowed_items() -> list[tuple[Any]]:
         A list of the sets of borrowed items and the person currently loaning them, to then
         remind them.
     """
-    ...
+    try:
+        res = get(BORROWED_ITEMS_URL, timeout=TIMEOUT)
+        if res.status_code != 202 or res.status_code != 200:
+            raise ValueError("Something did not sendddddddd.")
+    except ValueError as e:
+        print(f"Error: {e}")
