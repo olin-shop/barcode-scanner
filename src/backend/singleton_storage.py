@@ -120,6 +120,7 @@ class NameStorage(BaseStorage):
     email: str = ""
     borrowed_items: list[str] = []
     time_borrowed: list[datetime] = []
+    statuses: list[Status] = []
 
     # When changed, this will be True. Otherwise, False
     on_change: bool = False
@@ -130,6 +131,7 @@ class NameStorage(BaseStorage):
         "email",
         "borrowed_items",
         "time_borrowed",
+        "statuses",
     }
 
     def _validate_data(self, **kwargs) -> dict:
@@ -147,12 +149,13 @@ class ItemStorage(BaseStorage):
     """
 
     item_id: int = 0
-    item_name = ""
+    item_name: str = ""
+    item_status: Status = Status.NONE
 
     # When changed, this will be True. Otherwise, False
     on_change: bool = False
 
-    safe_values: set[str] = {"item_id", "item_name"}
+    safe_values: set[str] = {"item_id", "item_name", "item_status"}
 
     def _validate_data(self, **kwargs) -> dict:
         safe_values_dict: dict = {}

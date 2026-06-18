@@ -4,7 +4,6 @@ All returns get handled at our endpoints.
 """
 
 import asyncio
-from typing import Any
 from datetime import datetime
 
 import requests_async as requests
@@ -17,7 +16,7 @@ from backend.backend_constants import (
     TIMEOUT,
     db_to_class_conversion,
 )
-from backend.backend_types import Status
+from backend.backend_types import Status, UserInfoPayload
 from backend.singleton_storage import (
     NameStorage,
     ItemStorage,
@@ -28,7 +27,9 @@ from backend.singleton_storage import (
 pipeline_lock: asyncio.Lock = asyncio.Lock()
 
 
-async def get_name(barcode: str) -> tuple[str, str, str, list[str], list[datetime]]:
+async def get_name(
+    barcode: str,
+) -> tuple[str, str, str, list[str], list[datetime], list[Status]]:
     """
     Gathers the name attached to a given barcode.
 
@@ -57,13 +58,13 @@ async def get_name(barcode: str) -> tuple[str, str, str, list[str], list[datetim
                 raise ValueError("Something did not send.")
         except ValueError as e:
             print(f"Error: {e}")
-            return ("", "", "", [], [])
+            return ("", "", "", [], [], [])
 
         timeout_counter = 0
         while not storage.on_change:
             if timeout_counter >= 150:  # 15 seconds (150 * 0.1s)
                 print("Timeout: Power Automate never responded.")
-                return ("", "", "", [], [])  # Return empty/safe defaults
+                return ("", "", "", [], [], [])  # Return empty/safe defaults
 
             await asyncio.sleep(0.1)
             timeout_counter += 1
@@ -75,10 +76,11 @@ async def get_name(barcode: str) -> tuple[str, str, str, list[str], list[datetim
             storage.email,
             storage.borrowed_items,
             storage.time_borrowed,
+            storage.statuses,
         )
 
 
-async def get_item(barcode: int) -> str:
+async def get_item(barcode: int) -> tuple[str, Status]:
     """
     Gathers the item name attached to a given barcode.
 
@@ -92,8 +94,8 @@ async def get_item(barcode: int) -> str:
 
     Returns
     -------
-    str
-        The name of the item.
+    tuple[str, Status]
+        A tuple containing the name of the item and it's current status.
     """
     send_json: dict[str, int] = {"Item ID": barcode}
     storage = ItemStorage()
@@ -105,22 +107,22 @@ async def get_item(barcode: int) -> str:
             raise ValueError("Something did not send.")
     except ValueError as e:
         print(f"Error: {e}")
-        return ""
+        return ("", Status.NONE)
 
     timeout_counter = 0
     while not storage.on_change:
         if timeout_counter >= 150:
             print("Timeout: Power Automate never responded.")
-            return ""
+            return ("", Status.NONE)
 
         await asyncio.sleep(0.1)
         timeout_counter += 1
 
     storage.on_change = False
-    return storage.item_name
+    return storage.item_name, storage.item_status
 
 
-async def checkout(user_info: dict[str, Any]) -> bool:
+async def checkout(user_info: UserInfoPayload) -> bool:
     """
     From a given set of data representing the user info for a checkout,
     add that checkout to the database, and return the list of other
@@ -134,7 +136,7 @@ async def checkout(user_info: dict[str, Any]) -> bool:
 
     Parameters
     ----------
-    user_info : dict[str, str  |  int  |  datetime]
+    user_info : UserInfoPayload
         Info of the user for their checkout.
         Structure:
         {
@@ -146,8 +148,13 @@ async def checkout(user_info: dict[str, Any]) -> bool:
             "Date Borrowed": datetime - The date and time the user borrowed the item.
             "Status": Status (StrEnum) (Borrowed, In Stock, Missing)
         }
+
+    Returns
+    -------
+    bool
+        Returns whether the checkout has been received or if it has failed for some reason.
     """
-    send_json: dict = {
+    send_json: dict[str, str | int] = {
         "First Name": "",
         "Last Name": "",
         "ID": "",

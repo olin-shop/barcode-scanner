@@ -45,9 +45,22 @@ async def get_item_route() -> Response:
     """
     payload = await request.get_json()
     item_name: str = payload["Item Name"]
+    item_status: Status = Status.NONE
+
+    match payload["Item Status"]:
+        case Status.INSTOCK.value:
+            item_status = Status.INSTOCK
+        case Status.MISSING.value:
+            item_status = Status.MISSING
+        case Status.BORROWED.value:
+            item_status = Status.BORROWED
+        case Status.NONE.value:
+            raise ValueError("Item is of unknown status!")
+        case _:
+            raise ValueError("Item is of unknown status!")
 
     item_singleton: ItemStorage = ItemStorage()
-    item_singleton.provide_data(item_name=item_name)
+    item_singleton.provide_data(item_name=item_name, item_status=item_status)
     item_singleton.on_change = True
 
     return jsonify([])
@@ -70,11 +83,13 @@ async def get_name_route() -> Response:
 
     borrowed_items: list[str] = []
     time_borrowed: list[datetime] = []
+    statuses: list[Status] = []
 
     for row in excel_data:
-        # Await the request function here to yield back to the event loop
-        borrowed_items.append(await get_item(row["Item ID"]))
+        item_name, item_status = await get_item(row["Item ID"])
 
+        borrowed_items.append(item_name)
+        statuses.append(item_status)
         date_string = row["Date Borrowed"]
         time_borrowed.append(datetime.fromisoformat(date_string.replace("Z", "+00:00")))
 
@@ -86,6 +101,7 @@ async def get_name_route() -> Response:
         email=email,
         borrowed_items=borrowed_items,
         time_borrowed=time_borrowed,
+        statuses=statuses,
     )
     name_singleton.on_change = True
 
@@ -109,7 +125,8 @@ async def request_borrowed_items_route() -> Response:
     statuses: list[Status] = []
 
     for row in excel_data:
-        borrowed_items.append(await get_item(row["Item ID"]))
+        item_name, _ = await get_item(row["Item ID"])
+        borrowed_items.append(item_name)
 
         date_string = row["Date Borrowed"]
         time_borrowed.append(datetime.fromisoformat(date_string.replace("Z", "+00:00")))
