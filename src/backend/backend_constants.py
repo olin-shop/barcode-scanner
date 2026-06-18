@@ -18,6 +18,8 @@ PORT: int = config["PORT"]
 
 HOST_IP: str = config["HOST_IP"]
 
+TIMEOUT: int = 10
+
 db_to_class_conversion: dict[str, str] = {
     "First Name": "first_name",
     "Last Name": "last_name",
