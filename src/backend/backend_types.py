@@ -23,10 +23,10 @@ class UserInfoPayload(TypedDict):
     Type defined for the user information dictionary.
     """
 
-    first_name: str
-    last_name: str
+    name: str
     id: str
     email: str
     item_id: int
     borrowed_date: datetime
+    returned_date: datetime
     status: Status
