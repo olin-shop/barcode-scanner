@@ -49,7 +49,7 @@ async def get_name(
         have currently borrowed and the time they borrowed them.
     """
     async with pipeline_lock:
-        send_json: dict[str, str] = {"Barcode": barcode}
+        send_json: dict[str, str] = {"User ID": barcode}
         storage = NameStorage()
         storage.on_change = False  # Reset state before requesting
 
