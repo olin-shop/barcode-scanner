@@ -7,6 +7,7 @@ from threading import Lock
 from datetime import datetime
 
 from backend.backend_types import Status
+from backend.backend_constants import min_datetime
 
 
 class SingletonMeta(type):
@@ -76,13 +77,13 @@ class CheckoutStorage(BaseStorage):
     Subclass of BaseStorage, specifically for the checkout.
     """
 
-    first_name: str = ""
-    last_name: str = ""
-    id: str = ""
+    name: str = ""
+    user_id: str = ""
     email: str = ""
     item_id: int = 0
-    borrowed_date: datetime = datetime.min
-    status: Status = Status.NONE
+    borrowed_date: datetime = min_datetime
+    returned_date: datetime = min_datetime
+    item_status: Status = Status.NONE
 
     # When the data has been received, this will be True.
     has_been_sent: bool = False
@@ -91,13 +92,13 @@ class CheckoutStorage(BaseStorage):
     on_change: bool = False
 
     safe_values: set[str] = {
-        "first_name",
-        "last_name",
-        "id",
+        "name",
+        "user_id",
         "email",
         "item_id",
         "borrowed_date",
-        "status",
+        "returned_date",
+        "item_status",
         "has_been_sent",
     }
 
@@ -115,8 +116,7 @@ class NameStorage(BaseStorage):
     Subclass of BaseStorage, specifically for collecting names and emails.
     """
 
-    first_name: str = ""
-    last_name: str = ""
+    name: str = ""
     email: str = ""
     borrowed_items: list[str] = []
     time_borrowed: list[datetime] = []
@@ -126,8 +126,7 @@ class NameStorage(BaseStorage):
     on_change: bool = False
 
     safe_values: set[str] = {
-        "first_name",
-        "last_name",
+        "name",
         "email",
         "borrowed_items",
         "time_borrowed",

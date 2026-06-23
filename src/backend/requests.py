@@ -14,6 +14,7 @@ from backend.backend_constants import (
     NAME_URL,
     BORROWED_ITEMS_URL,
     TIMEOUT,
+    to_excel_date,
     db_to_class_conversion,
 )
 from backend.backend_types import Status, UserInfoPayload
@@ -29,7 +30,7 @@ pipeline_lock: asyncio.Lock = asyncio.Lock()
 
 async def get_name(
     barcode: str,
-) -> tuple[str, str, str, list[str], list[datetime], list[Status]]:
+) -> tuple[str, str, list[str], list[datetime], list[Status]]:
     """
     Gathers the name attached to a given barcode.
 
@@ -43,8 +44,8 @@ async def get_name(
 
     Returns
     -------
-    tuple[str, str, str, list[str], list[datetime]]
-        A tuple of the first name, last name, their email, the items they
+    tuple[str, str, list[str], list[datetime], list[Status]]
+        A tuple of the name their email, the items they
         have currently borrowed and the time they borrowed them.
     """
     async with pipeline_lock:
@@ -58,21 +59,20 @@ async def get_name(
                 raise ValueError("Something did not send.")
         except ValueError as e:
             print(f"Error: {e}")
-            return ("", "", "", [], [], [])
+            return ("", "", [], [], [])
 
         timeout_counter = 0
         while not storage.on_change:
             if timeout_counter >= 150:  # 15 seconds (150 * 0.1s)
                 print("Timeout: Power Automate never responded.")
-                return ("", "", "", [], [], [])  # Return empty/safe defaults
+                return ("", "", [], [], [])  # Return empty/safe defaults
 
             await asyncio.sleep(0.1)
             timeout_counter += 1
 
         storage.on_change = False
         return (
-            storage.first_name,
-            storage.last_name,
+            storage.name,
             storage.email,
             storage.borrowed_items,
             storage.time_borrowed,
@@ -142,11 +142,12 @@ async def checkout(user_info: UserInfoPayload) -> bool:
         {
             "First Name": str
             "Last Name": str
-            "ID": str - A set of numbers and letters.
+            "User ID": str - A set of numbers and letters.
             "Email": str
             "Item ID": int - A set of 5 numbers.
             "Date Borrowed": datetime - The date and time the user borrowed the item.
-            "Status": Status (StrEnum) (Borrowed, In Stock, Missing)
+            "Date Returned": datetime - The date and time the user returned the item.
+            "Item Status": Status (StrEnum) (Borrowed, In Stock, Missing)
         }
 
     Returns
@@ -154,21 +155,21 @@ async def checkout(user_info: UserInfoPayload) -> bool:
     bool
         Returns whether the checkout has been received or if it has failed for some reason.
     """
-    send_json: dict[str, str | int] = {
-        "First Name": "",
-        "Last Name": "",
-        "ID": "",
+    send_json: dict[str, str | int | float] = {
+        "Name": "",
+        "User ID": "",
         "Email": "",
         "Item ID": 0,
-        "Date Borrowed": "",
-        "Status": "",
+        "Date Borrowed": 0.0,
+        "Date Returned": 0.0,
+        "Item Status": "",
     }
 
     for key in send_json:
         user_info_key: str = db_to_class_conversion[key]
         match user_info[user_info_key]:
             case datetime():
-                send_json[key] = user_info[user_info_key].strftime("%Y-%m-%dT%H:%M:%SZ")
+                send_json[key] = to_excel_date(user_info[user_info_key])
             case str() | int():
                 send_json[key] = user_info[user_info_key]
             case Status():

@@ -13,6 +13,7 @@ from backend.singleton_storage import (
     NameStorage,
 )
 from backend.backend_types import Status
+from backend.backend_constants import from_excel_date
 from backend.requests import get_item
 
 quart_app: Quart = Quart(__name__)
@@ -71,13 +72,15 @@ async def get_name_route() -> Response:
     """
     The name route.
 
-    When this endpoint is accessed, it will be receiving the first name,
-    last name and email from a previous request.
+    When this endpoint is accessed, it will be receiving
+    the name and email from a previous request. It will
+    also receive the list of borrowed items associated
+    with that name and the times that they were borrowed,
+    along with the status of the item currently.
     """
     payload: dict = await request.get_json()
 
-    first_name: str = payload["First Name"]
-    last_name: str = payload["Last Name"]
+    name: str = payload["Name"]
     email: str = payload["Email"]
     excel_data: list[dict] = payload["excelData"]
 
@@ -90,14 +93,16 @@ async def get_name_route() -> Response:
 
         borrowed_items.append(item_name)
         statuses.append(item_status)
-        date_string = row["Date Borrowed"]
-        time_borrowed.append(datetime.fromisoformat(date_string.replace("Z", "+00:00")))
+        date_number = row["Date Borrowed"]
+        time_borrowed.append(
+            from_excel_date(date_number)
+            # datetime.fromisoformat(date_string.replace("Z", "+00:00"))
+        )  # change to number
 
     name_singleton: NameStorage = NameStorage()
 
     name_singleton.provide_data(
-        first_name=first_name,
-        last_name=last_name,
+        name=name,
         email=email,
         borrowed_items=borrowed_items,
         time_borrowed=time_borrowed,
@@ -128,8 +133,8 @@ async def request_borrowed_items_route() -> Response:
         item_name, _ = await get_item(row["Item ID"])
         borrowed_items.append(item_name)
 
-        date_string = row["Date Borrowed"]
-        time_borrowed.append(datetime.fromisoformat(date_string.replace("Z", "+00:00")))
+        date_number = row["Date Borrowed"]
+        time_borrowed.append(from_excel_date(date_number))
         status_str = row["Status"]
 
         match status_str:
