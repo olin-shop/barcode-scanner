@@ -45,8 +45,9 @@ async def get_name(
     Returns
     -------
     tuple[str, str, list[str], list[datetime], list[Status]]
-        A tuple of the name their email, the items they
-        have currently borrowed and the time they borrowed them.
+        A tuple of their name, their email, the items they
+        have currently borrowed, the time they borrowed them,
+        and the enumed status of those items.
     """
     async with pipeline_lock:
         send_json: dict[str, str] = {"User ID": barcode}
@@ -140,10 +141,9 @@ async def checkout(user_info: UserInfoPayload) -> bool:
         Info of the user for their checkout.
         Structure:
         {
-            "First Name": str
-            "Last Name": str
+            "Name": str - Their name.
             "User ID": str - A set of numbers and letters.
-            "Email": str
+            "Email": str - Their email.
             "Item ID": int - A set of 5 numbers.
             "Date Borrowed": datetime - The date and time the user borrowed the item.
             "Date Returned": datetime - The date and time the user returned the item.
