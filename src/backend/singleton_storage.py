@@ -118,7 +118,6 @@ class NameStorage(BaseStorage):
 
     name: str = ""
     email: str = ""
-    borrowed_items: list[str] = []
     time_borrowed: list[datetime] = []
     statuses: list[Status] = []
     item_ids: list[str] = []
@@ -129,7 +128,6 @@ class NameStorage(BaseStorage):
     safe_values: set[str] = {
         "name",
         "email",
-        "borrowed_items",
         "time_borrowed",
         "statuses",
         "item_ids",

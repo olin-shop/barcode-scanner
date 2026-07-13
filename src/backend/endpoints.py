@@ -14,7 +14,6 @@ from backend.singleton_storage import (
 )
 from backend.backend_types import Status
 from backend.backend_constants import from_excel_date
-from backend.requests import get_item
 
 quart_app: Quart = Quart(__name__)
 
@@ -84,17 +83,23 @@ async def get_name_route() -> Response:
     email: str = payload["Email"]
     excel_data: list[dict] = payload["excelData"]
 
-    borrowed_items: list[str] = []
     time_borrowed: list[datetime] = []
     statuses: list[Status] = []
     item_ids: list[int] = []
 
     for row in excel_data:
-        item_name, item_status = await get_item(row["ItemID"])
-
-        borrowed_items.append(item_name)
         item_ids.append(int(row["ItemID"]))
-        statuses.append(item_status)
+        
+        match row["ItemStatus"]:
+            case Status.INSTOCK.value:
+                statuses.append(Status.INSTOCK)
+            case Status.MISSING.value:
+                statuses.append(Status.MISSING)
+            case Status.BORROWED.value:
+                statuses.append(Status.BORROWED)
+            case _:
+                statuses.append(Status.NONE)
+                
         date_number = int(row["DateBorrowed"])
         
         time_borrowed.append(from_excel_date(date_number))
@@ -126,15 +131,12 @@ async def request_borrowed_items_route() -> Response:
     payload = await request.get_json()
     excel_data: list[dict] = payload["excelData"]
 
-    borrowed_items: list[str] = []
     time_borrowed: list[datetime] = []
     statuses: list[Status] = []
     item_ids: list[int] = []
 
     for row in excel_data:
         item_ids.append(int(row["ItemID"]))
-        item_name, _ = await get_item(row["ItemID"])
-        borrowed_items.append(item_name)
 
         date_number = int(row["DateBorrowed"])
         time_borrowed.append(from_excel_date(date_number))
