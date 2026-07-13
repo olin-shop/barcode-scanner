@@ -29,4 +29,4 @@ class UserInfoPayload(TypedDict):
     item_id: int
     borrowed_date: datetime
     returned_date: datetime
-    status: Status
+    item_status: Status
