@@ -87,17 +87,16 @@ async def get_name_route() -> Response:
     borrowed_items: list[str] = []
     time_borrowed: list[datetime] = []
     statuses: list[Status] = []
+    item_ids: list[int] = []
 
     for row in excel_data:
         item_name, item_status = await get_item(row["Item ID"])
 
         borrowed_items.append(item_name)
+        item_ids.append(row["Item ID"])
         statuses.append(item_status)
         date_number = row["Date Borrowed"]
-        time_borrowed.append(
-            from_excel_date(date_number)
-            # datetime.fromisoformat(date_string.replace("Z", "+00:00"))
-        )  # change to number
+        time_borrowed.append(from_excel_date(date_number))
 
     name_singleton: NameStorage = NameStorage()
 
@@ -107,6 +106,7 @@ async def get_name_route() -> Response:
         borrowed_items=borrowed_items,
         time_borrowed=time_borrowed,
         statuses=statuses,
+        item_ids=item_ids,
     )
     name_singleton.on_change = True
 
@@ -128,8 +128,10 @@ async def request_borrowed_items_route() -> Response:
     borrowed_items: list[str] = []
     time_borrowed: list[datetime] = []
     statuses: list[Status] = []
+    item_ids: list[int] = []
 
     for row in excel_data:
+        item_ids.append(row["Item ID"])
         item_name, _ = await get_item(row["Item ID"])
         borrowed_items.append(item_name)
 
@@ -155,6 +157,7 @@ async def request_borrowed_items_route() -> Response:
             borrowed_items=borrowed_items,
             time_borrowed=time_borrowed,
             statuses=statuses,
+            item_ids=item_ids,
         )
         borrowed_items_singleton.on_change = True
 
