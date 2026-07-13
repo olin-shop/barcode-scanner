@@ -100,7 +100,7 @@ async def get_name_route() -> Response:
             case _:
                 statuses.append(Status.NONE)
                 
-        date_number = int(row["DateBorrowed"])
+        date_number = float(row["DateBorrowed"])
         
         time_borrowed.append(from_excel_date(date_number))
 
@@ -109,7 +109,6 @@ async def get_name_route() -> Response:
     name_singleton.provide_data(
         name=name,
         email=email,
-        borrowed_items=borrowed_items,
         time_borrowed=time_borrowed,
         statuses=statuses,
         item_ids=item_ids,
@@ -138,7 +137,7 @@ async def request_borrowed_items_route() -> Response:
     for row in excel_data:
         item_ids.append(int(row["ItemID"]))
 
-        date_number = int(row["DateBorrowed"])
+        date_number = float(row["DateBorrowed"])
         time_borrowed.append(from_excel_date(date_number))
         status_str = row["ItemStatus"]
 
@@ -157,7 +156,6 @@ async def request_borrowed_items_route() -> Response:
         borrowed_items_singleton = BorrowedItemsStorage()
 
         borrowed_items_singleton.provide_data(
-            borrowed_items=borrowed_items,
             time_borrowed=time_borrowed,
             statuses=statuses,
             item_ids=item_ids,

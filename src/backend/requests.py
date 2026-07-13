@@ -30,7 +30,7 @@ pipeline_lock: asyncio.Lock = asyncio.Lock()
 
 async def get_name(
     barcode: str,
-) -> tuple[str, str, list[str], list[datetime], list[Status]]:
+) -> tuple[str, str, list[datetime], list[Status], list[int]]:
     """
     Gathers the name attached to a given barcode.
 
@@ -75,9 +75,9 @@ async def get_name(
         return (
             storage.name,
             storage.email,
-            storage.borrowed_items,
             storage.time_borrowed,
             storage.statuses,
+            storage.item_ids,
         )
 
 
@@ -199,7 +199,7 @@ async def checkout(user_info: UserInfoPayload) -> bool:
     return storage.has_been_sent
 
 
-async def request_borrowed_items() -> tuple[list[str], list[datetime], list[Status], list[int]]:
+async def request_borrowed_items() -> tuple[list[datetime], list[Status], list[int]]:
     """
     Requests a list of all of the borrowed items.
 
@@ -233,4 +233,4 @@ async def request_borrowed_items() -> tuple[list[str], list[datetime], list[Stat
         timeout_counter += 1
 
     storage.on_change = False
-    return (storage.borrowed_items, storage.time_borrowed, storage.statuses, storage.item_ids)
+    return (storage.time_borrowed, storage.statuses, storage.item_ids)
