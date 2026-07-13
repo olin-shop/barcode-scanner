@@ -45,10 +45,10 @@ async def get_item_route() -> Response:
     data that was requested.
     """
     payload = await request.get_json()
-    item_name: str = payload["Item Name"]
+    item_name: str = payload["ItemName"]
     item_status: Status = Status.NONE
 
-    match payload["Item Status"]:
+    match payload["ItemStatus"]:
         case Status.INSTOCK.value:
             item_status = Status.INSTOCK
         case Status.MISSING.value:
@@ -90,12 +90,13 @@ async def get_name_route() -> Response:
     item_ids: list[int] = []
 
     for row in excel_data:
-        item_name, item_status = await get_item(row["Item ID"])
+        item_name, item_status = await get_item(row["ItemID"])
 
         borrowed_items.append(item_name)
-        item_ids.append(row["Item ID"])
+        item_ids.append(int(row["ItemID"]))
         statuses.append(item_status)
-        date_number = row["Date Borrowed"]
+        date_number = int(row["DateBorrowed"])
+        
         time_borrowed.append(from_excel_date(date_number))
 
     name_singleton: NameStorage = NameStorage()
@@ -131,13 +132,13 @@ async def request_borrowed_items_route() -> Response:
     item_ids: list[int] = []
 
     for row in excel_data:
-        item_ids.append(row["Item ID"])
-        item_name, _ = await get_item(row["Item ID"])
+        item_ids.append(int(row["ItemID"]))
+        item_name, _ = await get_item(row["ItemID"])
         borrowed_items.append(item_name)
 
-        date_number = row["Date Borrowed"]
+        date_number = int(row["DateBorrowed"])
         time_borrowed.append(from_excel_date(date_number))
-        status_str = row["Status"]
+        status_str = row["ItemStatus"]
 
         match status_str:
             case Status.INSTOCK:

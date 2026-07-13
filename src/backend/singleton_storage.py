@@ -173,7 +173,7 @@ class BorrowedItemsStorage(BaseStorage):
     """
 
     borrowed_items: list[str] = []
-    item_ids: list[str] = []
+    item_ids: list[int] = []
     time_borrowed: list[datetime] = []
     statuses: list[Status] = []
 

@@ -50,7 +50,7 @@ async def get_name(
         and the enumed status of those items.
     """
     async with pipeline_lock:
-        send_json: dict[str, str] = {"User ID": barcode}
+        send_json: dict[str, str] = {"UserID": barcode}
         storage = NameStorage()
         storage.on_change = False  # Reset state before requesting
 
@@ -98,7 +98,7 @@ async def get_item(barcode: int) -> tuple[str, Status]:
     tuple[str, Status]
         A tuple containing the name of the item and it's current status.
     """
-    send_json: dict[str, int] = {"Item ID": barcode}
+    send_json: dict[str, int] = {"ItemID": barcode}
     storage = ItemStorage()
     storage.on_change = False
 
@@ -142,12 +142,12 @@ async def checkout(user_info: UserInfoPayload) -> bool:
         Structure:
         {
             "Name": str - Their name.
-            "User ID": str - A set of numbers and letters.
+            "UserID": str - A set of numbers and letters.
             "Email": str - Their email.
-            "Item ID": int - A set of 5 numbers.
-            "Date Borrowed": datetime - The date and time the user borrowed the item.
-            "Date Returned": datetime - The date and time the user returned the item.
-            "Item Status": Status (StrEnum) (Borrowed, In Stock, Missing)
+            "ItemID": int - A set of 5 numbers.
+            "DateBorrowed": datetime - The date and time the user borrowed the item.
+            "DateReturned": datetime - The date and time the user returned the item.
+            "ItemStatus": Status (StrEnum) (Borrowed, In Stock, Missing)
         }
 
     Returns
@@ -157,12 +157,12 @@ async def checkout(user_info: UserInfoPayload) -> bool:
     """
     send_json: dict[str, str | int | float] = {
         "Name": "",
-        "User ID": "",
+        "UserID": "",
         "Email": "",
-        "Item ID": 0,
-        "Date Borrowed": 0.0,
-        "Date Returned": 0.0,
-        "Item Status": "",
+        "ItemID": 0,
+        "DateBorrowed": 0.0,
+        "DateReturned": 0.0,
+        "ItemStatus": "",
     }
 
     for key in send_json:
@@ -199,7 +199,7 @@ async def checkout(user_info: UserInfoPayload) -> bool:
     return storage.has_been_sent
 
 
-async def request_borrowed_items() -> tuple[list[str], list[datetime], list[Status]]:
+async def request_borrowed_items() -> tuple[list[str], list[datetime], list[Status], list[int]]:
     """
     Requests a list of all of the borrowed items.
 
@@ -233,4 +233,4 @@ async def request_borrowed_items() -> tuple[list[str], list[datetime], list[Stat
         timeout_counter += 1
 
     storage.on_change = False
-    return (storage.borrowed_items, storage.time_borrowed, storage.statuses)
+    return (storage.borrowed_items, storage.time_borrowed, storage.statuses, storage.item_ids)

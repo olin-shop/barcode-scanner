@@ -24,13 +24,13 @@ TIMEOUT: int = 10
 
 db_to_class_conversion: dict[str, str] = {
     "Name": "name",
-    "User ID": "user_id",
+    "UserID": "user_id",
     "Email": "email",
-    "Date Borrowed": "borrowed_date",
-    "Date Returned": "returned_date",
-    "Item ID": "item_id",
-    "Item Name": "item_name",
-    "Item Status": "item_status",
+    "DateBorrowed": "borrowed_date",
+    "DateReturned": "returned_date",
+    "ItemID": "item_id",
+    "ItemName": "item_name",
+    "ItemStatus": "item_status",
 }
 
 # January 1st, 2000 at 12:00AM
