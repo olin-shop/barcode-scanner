@@ -28,6 +28,7 @@ db_to_class_conversion: dict[str, str] = {
     "Email": "email",
     "Date Borrowed": "borrowed_date",
     "Date Returned": "returned_date",
+    "Item ID": "item_id",
     "Item Name": "item_name",
     "Item Status": "item_status",
 }
