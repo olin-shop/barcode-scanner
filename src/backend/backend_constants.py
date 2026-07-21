@@ -3,8 +3,14 @@ Accessible constants for the backend.
 """
 
 from datetime import datetime, timedelta
+import asyncio
 
 from dotenv import dotenv_values
+
+from quart import Response, jsonify
+
+# Maps the unique request identifiers to their respective asynchronous placeholders to wait for incoming data
+pending_requests: dict[str, asyncio.Future] = {}
 
 config: dict = dotenv_values(".env")
 
@@ -21,6 +27,8 @@ PORT: int = config["PORT"]
 HOST_IP: str = config["HOST_IP"]
 
 TIMEOUT: int = 10
+
+EMPTY: Response = jsonify([])
 
 db_to_class_conversion: dict[str, str] = {
     "Name": "name",

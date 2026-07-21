@@ -1,4 +1,12 @@
 """
+DEPRECATED: This module and the singleton storage pattern have been deprecated.
+Backend webhook resolution is now natively handled by generating unique request identifiers 
+and using asynchronous placeholders to wait for data. This ensures each specific request 
+is paired with its specific response, preventing race conditions on concurrent requests. 
+See `backend_constants.py` and `requests.py` for the current implementation.
+
+This file is kept for historical reference.
+
 Classes used to store and clear the currently accessed data sent from the database pipelines.
 """
 
@@ -12,7 +20,7 @@ from backend.backend_constants import min_datetime
 
 class SingletonMeta(type):
     """
-    Metaclass for creating singleton pattern.
+    DEPRECATED: Metaclass for creating singleton pattern.
     """
 
     _instances = {}
@@ -28,7 +36,7 @@ class SingletonMeta(type):
 
 class BaseStorage(metaclass=SingletonMeta):
     """
-    Base class for the storage type.
+    DEPRECATED: Base class for the storage type.
     Defines the basic logic for singleton access, storing and clearing.
     """
 
@@ -74,7 +82,7 @@ class BaseStorage(metaclass=SingletonMeta):
 
 class CheckoutStorage(BaseStorage):
     """
-    Subclass of BaseStorage, specifically for the checkout.
+    DEPRECATED: Subclass of BaseStorage, specifically for the checkout.
     """
 
     name: str = ""
@@ -113,7 +121,7 @@ class CheckoutStorage(BaseStorage):
 
 class NameStorage(BaseStorage):
     """
-    Subclass of BaseStorage, specifically for collecting names and emails.
+    DEPRECATED: Subclass of BaseStorage, specifically for collecting names and emails.
     """
 
     name: str = ""
@@ -144,7 +152,7 @@ class NameStorage(BaseStorage):
 
 class ItemStorage(BaseStorage):
     """
-    Subclass of BaseStorage, specifically for storing items.
+    DEPRECATED: Subclass of BaseStorage, specifically for storing items.
     """
 
     item_id: int = 0
@@ -167,7 +175,7 @@ class ItemStorage(BaseStorage):
 
 class BorrowedItemsStorage(BaseStorage):
     """
-    Subclass of BaseStorage, specifically for storing borrowed items.
+    DEPRECATED: Subclass of BaseStorage, specifically for storing borrowed items.
     """
 
     item_ids: list[int] = []

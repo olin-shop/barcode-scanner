@@ -1,19 +1,12 @@
 """
-How all of the local endpoints function, and store data on the storage singletons.
+How all of the local endpoints function, receiving webhook callbacks and matching them back to their original pending requests.
 """
 
 from datetime import datetime
 
 from quart import Quart, jsonify, request, Response
 
-from backend.singleton_storage import (
-    BorrowedItemsStorage,
-    CheckoutStorage,
-    ItemStorage,
-    NameStorage,
-)
-from backend.backend_types import Status
-from backend.backend_constants import from_excel_date
+from backend.backend_constants import from_excel_date, EMPTY, pending_requests
 
 quart_app: Quart = Quart(__name__)
 
@@ -23,16 +16,19 @@ async def checkout() -> Response:
     """
     The checkout route.
 
-    When this endpoint is accessed, it will be receiving data
-    from the checkout pipeline in our databases.
+    Receives the checkout confirmation from the checkout pipeline webhook. 
+    It extracts the unique request identifier from the payload, validates if the 
+    transmission was successful, and uses it to fulfill the asynchronous placeholder. 
+    This un-pauses the original `checkout()` request in `requests.py`.
     """
     payload = await request.get_json()
+    request_id = payload.get("RequestID")
 
-    checkout_storage_singleton = CheckoutStorage()
-    checkout_storage_singleton.has_been_sent = payload["Sent"] == "Received"
-    checkout_storage_singleton.on_change = True
+    has_been_sent = payload.get("Sent") == "Received"
+    if request_id and request_id in pending_requests:
+        pending_requests.pop(request_id).set_result(has_been_sent)
 
-    return jsonify([])
+    return EMPTY
 
 
 @quart_app.route("/items", methods=["POST"])
@@ -40,14 +36,16 @@ async def get_item_route() -> Response:
     """
     The item route.
 
-    When this endpoint is accessed, it will be receiving the item
-    data that was requested.
+    Receives the item data from the item pipeline webhook. It parses the item name 
+    and enum status, extracts the unique request identifier, and fulfills the 
+    asynchronous placeholder to un-pause the original `get_item()` request.
     """
     payload = await request.get_json()
-    item_name: str = payload["ItemName"]
+    request_id = payload.get("RequestID")
+    item_name: str = payload.get("ItemName", "")
     item_status: Status = Status.NONE
 
-    match payload["ItemStatus"]:
+    match payload.get("ItemStatus"):
         case Status.INSTOCK.value:
             item_status = Status.INSTOCK
         case Status.MISSING.value:
@@ -59,11 +57,10 @@ async def get_item_route() -> Response:
         case _:
             raise ValueError("Item is of unknown status!")
 
-    item_singleton: ItemStorage = ItemStorage()
-    item_singleton.provide_data(item_name=item_name, item_status=item_status)
-    item_singleton.on_change = True
+    if request_id and request_id in pending_requests:
+        pending_requests.pop(request_id).set_result((item_name, item_status))
 
-    return jsonify([])
+    return EMPTY
 
 
 @quart_app.route("/names", methods=["POST"])
@@ -71,17 +68,17 @@ async def get_name_route() -> Response:
     """
     The name route.
 
-    When this endpoint is accessed, it will be receiving
-    the name and email from a previous request. It will
-    also receive the list of borrowed items associated
-    with that name and the times that they were borrowed,
-    along with the status of the item currently.
+    Receives the user data and borrowed items payload from the name pipeline webhook. 
+    It parses the Excel dates into datetimes, maps the enum statuses, extracts the 
+    unique request identifier, and fulfills the asynchronous placeholder to un-pause 
+    the original `get_name()` request.
     """
     payload: dict = await request.get_json()
+    request_id = payload.get("RequestID")
 
-    name: str = payload["Name"]
-    email: str = payload["Email"]
-    excel_data: list[dict] = payload["excelData"]
+    name: str = payload.get("Name", "")
+    email: str = payload.get("Email", "")
+    excel_data: list[dict] = payload.get("excelData", [])
 
     time_borrowed: list[datetime] = []
     statuses: list[Status] = []
@@ -104,31 +101,25 @@ async def get_name_route() -> Response:
         
         time_borrowed.append(from_excel_date(date_number))
 
-    name_singleton: NameStorage = NameStorage()
+    if request_id and request_id in pending_requests:
+        pending_requests.pop(request_id).set_result((name, email, time_borrowed, statuses, item_ids))
 
-    name_singleton.provide_data(
-        name=name,
-        email=email,
-        time_borrowed=time_borrowed,
-        statuses=statuses,
-        item_ids=item_ids,
-    )
-    name_singleton.on_change = True
-
-    return jsonify([])
+    return EMPTY
 
 
-@quart_app.route("/borrowed-items", methods=["GET", "POST"])
+@quart_app.route("/borrowed-items", methods=["POST"])
 async def request_borrowed_items_route() -> Response:
     """
     The borrowed items route.
 
-    When this endpoint is accessed, it will be receiving the user info
-    for all of the items that are currently borrowed, for reminder
-    purposes.
+    Receives the full list of currently borrowed items from the pipeline webhook. 
+    It parses the dates and statuses, extracts the unique request identifier, and 
+    fulfills the asynchronous placeholder to un-pause the original 
+    `request_borrowed_items()` request.
     """
     payload = await request.get_json()
-    excel_data: list[dict] = payload["excelData"]
+    request_id = payload.get("RequestID")
+    excel_data: list[dict] = payload.get("excelData", [])
 
     time_borrowed: list[datetime] = []
     statuses: list[Status] = []
@@ -142,24 +133,18 @@ async def request_borrowed_items_route() -> Response:
         status_str = row["ItemStatus"]
 
         match status_str:
-            case Status.INSTOCK:
+            case Status.INSTOCK.value:
                 statuses.append(Status.INSTOCK)
-            case Status.MISSING:
+            case Status.MISSING.value:
                 statuses.append(Status.MISSING)
-            case Status.BORROWED:
+            case Status.BORROWED.value:
                 statuses.append(Status.BORROWED)
             case _:
                 raise ValueError(
                     "Supposed to be one of these three, check the Excel sheet for errors."
                 )
 
-        borrowed_items_singleton = BorrowedItemsStorage()
+    if request_id and request_id in pending_requests:
+        pending_requests.pop(request_id).set_result((time_borrowed, statuses, item_ids))
 
-        borrowed_items_singleton.provide_data(
-            time_borrowed=time_borrowed,
-            statuses=statuses,
-            item_ids=item_ids,
-        )
-        borrowed_items_singleton.on_change = True
-
-    return jsonify([])
+    return EMPTY

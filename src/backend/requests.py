@@ -1,6 +1,6 @@
 """
 This includes functions for sending requests to our database pipeline.
-All returns get handled at our endpoints.
+The functions wait for incoming data which is received and matched up at our endpoints.
 """
 
 import asyncio
@@ -16,26 +16,24 @@ from backend.backend_constants import (
     TIMEOUT,
     to_excel_date,
     db_to_class_conversion,
+    pending_requests,
 )
 from backend.backend_types import Status, UserInfoPayload
-from backend.singleton_storage import (
-    NameStorage,
-    ItemStorage,
-    CheckoutStorage,
-    BorrowedItemsStorage,
-)
-
-pipeline_lock: asyncio.Lock = asyncio.Lock()
+import uuid
+from typing import Optional
 
 
 async def get_name(
     barcode: str,
-) -> tuple[str, str, list[datetime], list[Status], list[int]]:
+) -> Optional[tuple[str, str, list[datetime], list[Status], list[int]]]:
     """
-    Gathers the name attached to a given barcode.
+    Gathers the name and currently borrowed items attached to a given barcode.
 
-    Given a barcode, send a POST request to an database. Once requested,
-    it will send back a first name and last name.
+    This function generates a unique request identifier and creates an asynchronous 
+    placeholder. It sends a POST request to the Power Automate pipeline, passing along 
+    both the barcode and the unique ID. It then pauses execution (for up to 15 seconds) 
+    until the `/names` endpoint receives the matching webhook callback and fulfills 
+    the placeholder with the requested data.
 
     Parameters
     ----------
@@ -44,49 +42,42 @@ async def get_name(
 
     Returns
     -------
-    tuple[str, str, list[str], list[datetime], list[Status]]
-        A tuple of their name, their email, the items they
-        have currently borrowed, the time they borrowed them,
-        and the enumed status of those items.
+    Optional[tuple[str, str, list[datetime], list[Status], list[int]]]
+        A tuple of the user's name, their email, the times they borrowed items,
+        the statuses of those items, and the item IDs. Returns None if the 
+        request fails or times out.
     """
-    async with pipeline_lock:
-        send_json: dict[str, str] = {"UserID": barcode}
-        storage = NameStorage()
-        storage.on_change = False  # Reset state before requesting
+    request_id = str(uuid.uuid4())
+    send_json: dict[str, str] = {"UserID": barcode, "RequestID": request_id}
 
-        try:
-            res = await requests.post(NAME_URL, json=send_json, timeout=TIMEOUT)
-            if res.status_code not in (200, 202):
-                raise ValueError("Something did not send.")
-        except ValueError as e:
-            print(f"Error: {e}")
-            return ("", "", [], [], [])
+    future = asyncio.get_running_loop().create_future()
+    pending_requests[request_id] = future
 
-        timeout_counter = 0
-        while not storage.on_change:
-            if timeout_counter >= 150:  # 15 seconds (150 * 0.1s)
-                print("Timeout: Power Automate never responded.")
-                return ("", "", [], [], [])  # Return empty/safe defaults
+    try:
+        res = await requests.post(NAME_URL, json=send_json, timeout=TIMEOUT)
+        if res.status_code not in (200, 202):
+            raise ValueError("Something did not send.")
+    except ValueError as e:
+        pending_requests.pop(request_id, None)
+        print(f"Error: {e}")
+        return None
 
-            await asyncio.sleep(0.1)
-            timeout_counter += 1
-
-        storage.on_change = False
-        return (
-            storage.name,
-            storage.email,
-            storage.time_borrowed,
-            storage.statuses,
-            storage.item_ids,
-        )
+    try:
+        return await asyncio.wait_for(future, timeout=15.0)
+    except asyncio.TimeoutError:
+        pending_requests.pop(request_id, None)
+        print("Timeout: Power Automate never responded.")
+        return None
 
 
-async def get_item(barcode: int) -> tuple[str, Status]:
+async def get_item(barcode: int) -> Optional[tuple[str, Status]]:
     """
-    Gathers the item name attached to a given barcode.
+    Gathers the item name and status attached to a given barcode.
 
-    Given a barcode, send a POST request to a database. Once requested,
-    it will send back the name of the item attached to that barcode.
+    This function generates a unique request identifier and creates an asynchronous 
+    placeholder. It sends a POST request to the item database pipeline with the barcode 
+    and the unique ID. It then pauses execution (for up to 15 seconds) until the 
+    `/items` endpoint receives the callback and fulfills the placeholder with the data.
 
     Parameters
     ----------
@@ -95,45 +86,42 @@ async def get_item(barcode: int) -> tuple[str, Status]:
 
     Returns
     -------
-    tuple[str, Status]
-        A tuple containing the name of the item and it's current status.
+    Optional[tuple[str, Status]]
+        A tuple containing the name of the item and its current status. 
+        Returns None if the request fails or times out.
     """
-    send_json: dict[str, int] = {"ItemID": barcode}
-    storage = ItemStorage()
-    storage.on_change = False
+    request_id = str(uuid.uuid4())
+    send_json: dict[str, str | int] = {"ItemID": barcode, "RequestID": request_id}
+    
+    future = asyncio.get_running_loop().create_future()
+    pending_requests[request_id] = future
 
     try:
         res = await requests.post(ITEM_URL, json=send_json, timeout=TIMEOUT)
         if res.status_code not in (200, 202):
             raise ValueError("Something did not send.")
     except ValueError as e:
+        pending_requests.pop(request_id, None)
         print(f"Error: {e}")
-        return ("", Status.NONE)
+        return None
 
-    timeout_counter = 0
-    while not storage.on_change:
-        if timeout_counter >= 150:
-            print("Timeout: Power Automate never responded.")
-            return ("", Status.NONE)
-
-        await asyncio.sleep(0.1)
-        timeout_counter += 1
-
-    storage.on_change = False
-    return storage.item_name, storage.item_status
+    try:
+        return await asyncio.wait_for(future, timeout=15.0)
+    except asyncio.TimeoutError:
+        pending_requests.pop(request_id, None)
+        print("Timeout: Power Automate never responded.")
+        return None
 
 
 async def checkout(user_info: UserInfoPayload) -> bool:
     """
-    From a given set of data representing the user info for a checkout,
-    add that checkout to the database, and return the list of other
-    checkouts that the user has.
+    Commits a user checkout or return to the database pipeline.
 
-    Given a user info dictionary containing the first and last name of the user,
-    their barcode ID, their email, the item that they want to checkout,
-    the current date in which they are checking out, and the status of the item,
-    send a POST request of this data to the checkout database and validate whether
-    this checkout is a return or a checkout.
+    This function structures the provided user info dictionary, converts datetime 
+    objects into Excel-compatible floats, and injects a unique request identifier. 
+    It sends a POST request to the checkout pipeline and creates an asynchronous 
+    placeholder, pausing execution (for up to 15 seconds) until the `/checkout` 
+    endpoint receives the webhook confirmation and fulfills the placeholder.
 
     Parameters
     ----------
@@ -153,8 +141,10 @@ async def checkout(user_info: UserInfoPayload) -> bool:
     Returns
     -------
     bool
-        Returns whether the checkout has been received or if it has failed for some reason.
+        Returns True if the checkout has been received successfully, or False if 
+        it fails or times out.
     """
+    request_id = str(uuid.uuid4())
     send_json: dict[str, str | int | float] = {
         "Name": "",
         "UserID": "",
@@ -163,9 +153,12 @@ async def checkout(user_info: UserInfoPayload) -> bool:
         "DateBorrowed": 0.0,
         "DateReturned": 0.0,
         "ItemStatus": "",
+        "RequestID": request_id,
     }
 
     for key in send_json:
+        if key == "RequestID":
+            continue
         user_info_key: str = db_to_class_conversion[key]
         match user_info[user_info_key]:
             case datetime():
@@ -175,62 +168,58 @@ async def checkout(user_info: UserInfoPayload) -> bool:
             case Status():
                 send_json[key] = user_info[user_info_key].value
 
-    storage = CheckoutStorage()
-    storage.on_change = False
+    future = asyncio.get_running_loop().create_future()
+    pending_requests[request_id] = future
 
     try:
         res = await requests.post(CHECKOUT_URL, json=send_json, timeout=TIMEOUT)
         if res.status_code not in (200, 202):
             raise ValueError("Something did not send.")
     except ValueError as e:
+        pending_requests.pop(request_id, None)
         print(f"Error: {e}")
         return False
 
-    timeout_counter = 0
-    while not storage.on_change:
-        if timeout_counter >= 150:
-            print("Timeout: Power Automate never responded.")
-            return False
-
-        await asyncio.sleep(0.1)
-        timeout_counter += 1
-
-    storage.on_change = False
-    return storage.has_been_sent
+    try:
+        return await asyncio.wait_for(future, timeout=15.0)
+    except asyncio.TimeoutError:
+        pending_requests.pop(request_id, None)
+        print("Timeout: Power Automate never responded.")
+        return False
 
 
-async def request_borrowed_items() -> tuple[list[datetime], list[Status], list[int]]:
+async def request_borrowed_items() -> Optional[tuple[list[datetime], list[Status], list[int]]]:
     """
-    Requests a list of all of the borrowed items.
+    Requests a list of all currently borrowed items for reminder purposes.
 
-    Requests a list of all of the currently borrowed items for reminder purposes.
-    Will send a GET request to our database pipeline, which will then separately be received.
+    This function generates a unique request identifier and creates an asynchronous 
+    placeholder. It fires a POST request to trigger the borrowed items pipeline in 
+    Power Automate, and then pauses execution (for up to 15 seconds). Once the pipeline 
+    completes its search, it sends a webhook to the `/borrowed-items` endpoint, 
+    which correlates the ID and fulfills the placeholder with the lists of data.
 
     Returns
     -------
-    list[tuple[Any]]
-        A list of the sets of borrowed items and the person currently loaning them, to then
-        remind them.
+    Optional[tuple[list[datetime], list[Status], list[int]]]
+        A tuple containing lists of all borrowed times, item statuses, and item IDs. 
+        Returns None if the request fails or times out.
     """
-    storage = BorrowedItemsStorage()
-    storage.on_change = False
+    request_id = str(uuid.uuid4())
+    future = asyncio.get_running_loop().create_future()
+    pending_requests[request_id] = future
 
     try:
-        res = await requests.get(BORROWED_ITEMS_URL, timeout=TIMEOUT)
+        res = await requests.post(BORROWED_ITEMS_URL, json={"RequestID": request_id}, timeout=TIMEOUT)
         if res.status_code not in (200, 202):
             raise ValueError("Something did not send.")
     except ValueError as e:
+        pending_requests.pop(request_id, None)
         print(f"Error: {e}")
-        return ([], [], [])
+        return None
 
-    timeout_counter = 0
-    while not storage.on_change:
-        if timeout_counter >= 150:
-            print("Timeout: Power Automate never responded.")
-            return ([], [], [])
-
-        await asyncio.sleep(0.1)
-        timeout_counter += 1
-
-    storage.on_change = False
-    return (storage.time_borrowed, storage.statuses, storage.item_ids)
+    try:
+        return await asyncio.wait_for(future, timeout=15.0)
+    except asyncio.TimeoutError:
+        pending_requests.pop(request_id, None)
+        print("Timeout: Power Automate never responded.")
+        return None
