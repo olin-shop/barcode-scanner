@@ -5,6 +5,7 @@ The functions wait for incoming data which is received and matched up at our end
 
 import asyncio
 from datetime import datetime
+import logging
 
 import requests_async as requests
 
@@ -21,6 +22,8 @@ from backend.app_state import pending_requests
 from backend.backend_types import Status, UserInfoPayload
 import uuid
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 async def get_name(
@@ -53,23 +56,27 @@ async def get_name(
     future: asyncio.Future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
 
+    logger.info("Initiating get_name request for user_barcode=%s (RequestID=%s).", barcode, request_id)
+
     try:
         res = await requests.post(NAME_URL, json=send_json, timeout=TIMEOUT)
         if res.status_code not in (200, 202):
-            raise ValueError("Something did not send.")
-    except ValueError as e:
+            raise ValueError(f"HTTP dispatch status {res.status_code}")
+    except Exception as e:
         pending_requests.pop(request_id, None)
-        print(f"Error: {e}")
+        logger.error("Failed to send get_name request for user_barcode=%s: %s", barcode, e)
         return None
 
     try:
-        return await asyncio.wait_for(future, timeout=15.0)
+        result = await asyncio.wait_for(future, timeout=15.0)
+        logger.info("Successfully received get_name result for user_barcode=%s (RequestID=%s).", barcode, request_id)
+        return result
     except asyncio.TimeoutError:
         pending_requests.pop(request_id, None)
-        print("Timeout: Power Automate never responded.")
+        logger.warning("Timeout: Power Automate never responded for get_name RequestID=%s (user_barcode=%s).", request_id, barcode)
         return None
     except ValueError as e:
-        print(f"Data Error: {e}")
+        logger.error("Data error in get_name for RequestID=%s: %s", request_id, e)
         return None
 
 
@@ -99,23 +106,27 @@ async def get_item(barcode: int) -> Optional[tuple[str, Status]]:
     future: asyncio.Future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
 
+    logger.info("Initiating get_item request for item_id=%d (RequestID=%s).", barcode, request_id)
+
     try:
         res = await requests.post(ITEM_URL, json=send_json, timeout=TIMEOUT)
         if res.status_code not in (200, 202):
-            raise ValueError("Something did not send.")
-    except ValueError as e:
+            raise ValueError(f"HTTP dispatch status {res.status_code}")
+    except Exception as e:
         pending_requests.pop(request_id, None)
-        print(f"Error: {e}")
+        logger.error("Failed to send get_item request for item_id=%d: %s", barcode, e)
         return None
 
     try:
-        return await asyncio.wait_for(future, timeout=15.0)
+        result = await asyncio.wait_for(future, timeout=15.0)
+        logger.info("Successfully received get_item result for item_id=%d (RequestID=%s).", barcode, request_id)
+        return result
     except asyncio.TimeoutError:
         pending_requests.pop(request_id, None)
-        print("Timeout: Power Automate never responded.")
+        logger.warning("Timeout: Power Automate never responded for get_item RequestID=%s (item_id=%d).", request_id, barcode)
         return None
     except ValueError as e:
-        print(f"Data Error: {e}")
+        logger.error("Data error in get_item for RequestID=%s: %s", request_id, e)
         return None
 
 
@@ -177,23 +188,33 @@ async def checkout(user_info: UserInfoPayload) -> bool:
     future: asyncio.Future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
 
+    logger.info(
+        "Initiating checkout pipeline commit for user=%s item=%s (Status=%s, RequestID=%s).",
+        user_info.get("user_id"),
+        user_info.get("item_id"),
+        user_info.get("item_status"),
+        request_id,
+    )
+
     try:
         res = await requests.post(CHECKOUT_URL, json=send_json, timeout=TIMEOUT)
         if res.status_code not in (200, 202):
-            raise ValueError("Something did not send.")
-    except ValueError as e:
+            raise ValueError(f"HTTP dispatch status {res.status_code}")
+    except Exception as e:
         pending_requests.pop(request_id, None)
-        print(f"Error: {e}")
+        logger.error("Failed to send checkout commit: %s", e)
         return False
 
     try:
-        return await asyncio.wait_for(future, timeout=15.0)
+        result = await asyncio.wait_for(future, timeout=15.0)
+        logger.info("Successfully received checkout confirmation for RequestID=%s.", request_id)
+        return result
     except asyncio.TimeoutError:
         pending_requests.pop(request_id, None)
-        print("Timeout: Power Automate never responded.")
+        logger.warning("Timeout: Power Automate never responded for checkout RequestID=%s.", request_id)
         return False
     except ValueError as e:
-        print(f"Data Error: {e}")
+        logger.error("Data error in checkout for RequestID=%s: %s", request_id, e)
         return False
 
 
@@ -217,21 +238,25 @@ async def request_borrowed_items() -> Optional[tuple[list[datetime], list[Status
     future: asyncio.Future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
 
+    logger.info("Initiating request_borrowed_items (RequestID=%s).", request_id)
+
     try:
         res = await requests.post(BORROWED_ITEMS_URL, json={"RequestID": request_id}, timeout=TIMEOUT)
         if res.status_code not in (200, 202):
-            raise ValueError("Something did not send.")
-    except ValueError as e:
+            raise ValueError(f"HTTP dispatch status {res.status_code}")
+    except Exception as e:
         pending_requests.pop(request_id, None)
-        print(f"Error: {e}")
+        logger.error("Failed to send request_borrowed_items: %s", e)
         return None
 
     try:
-        return await asyncio.wait_for(future, timeout=15.0)
+        result = await asyncio.wait_for(future, timeout=15.0)
+        logger.info("Successfully received borrowed items list for RequestID=%s.", request_id)
+        return result
     except asyncio.TimeoutError:
         pending_requests.pop(request_id, None)
-        print("Timeout: Power Automate never responded.")
+        logger.warning("Timeout: Power Automate never responded for request_borrowed_items RequestID=%s.", request_id)
         return None
     except ValueError as e:
-        print(f"Data Error: {e}")
+        logger.error("Data error in request_borrowed_items for RequestID=%s: %s", request_id, e)
         return None
