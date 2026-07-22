@@ -3,16 +3,16 @@ Accessible constants for the backend.
 """
 
 from datetime import datetime, timedelta
-import asyncio
-
 from dotenv import dotenv_values
 
 from quart import Response, jsonify
 
-# Maps the unique request identifiers to their respective asynchronous placeholders to wait for incoming data
-pending_requests: dict[str, asyncio.Future] = {}
-
 config: dict = dotenv_values(".env")
+if not config:
+    raise RuntimeError(
+        "Missing .env file! "
+        "Ask Shop Instructors for the .env file for the barcode scanner before testing and developing."
+    )
 
 NAME_URL: str = config["NAME_URL"]
 
@@ -54,7 +54,7 @@ def from_excel_date(num: float) -> datetime:
     excel_base: datetime = datetime(1899, 12, 30, 0, 0, 0)
 
     # Convert the float into a time difference of days
-    delta = timedelta(days=num)
+    delta: timedelta = timedelta(days=num)
 
     # Add the timedelta back to the base date
     return excel_base + delta
@@ -68,7 +68,7 @@ def to_excel_date(dt: datetime) -> float:
     # Base date accounting for Excel's 1900 leap year bug
     excel_base: datetime = datetime(1899, 12, 30, 0, 0, 0)
 
-    delta = dt - excel_base
+    delta: timedelta = dt - excel_base
 
     # Calculate days + fractional day for time
     return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400

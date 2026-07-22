@@ -16,8 +16,8 @@ from backend.backend_constants import (
     TIMEOUT,
     to_excel_date,
     db_to_class_conversion,
-    pending_requests,
 )
+from backend.app_state import pending_requests
 from backend.backend_types import Status, UserInfoPayload
 import uuid
 from typing import Optional
@@ -47,10 +47,10 @@ async def get_name(
         the statuses of those items, and the item IDs. Returns None if the 
         request fails or times out.
     """
-    request_id = str(uuid.uuid4())
+    request_id: str = str(uuid.uuid4())
     send_json: dict[str, str] = {"UserID": barcode, "RequestID": request_id}
 
-    future = asyncio.get_running_loop().create_future()
+    future: asyncio.Future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
 
     try:
@@ -90,10 +90,10 @@ async def get_item(barcode: int) -> Optional[tuple[str, Status]]:
         A tuple containing the name of the item and its current status. 
         Returns None if the request fails or times out.
     """
-    request_id = str(uuid.uuid4())
+    request_id: str = str(uuid.uuid4())
     send_json: dict[str, str | int] = {"ItemID": barcode, "RequestID": request_id}
     
-    future = asyncio.get_running_loop().create_future()
+    future: asyncio.Future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
 
     try:
@@ -144,7 +144,7 @@ async def checkout(user_info: UserInfoPayload) -> bool:
         Returns True if the checkout has been received successfully, or False if 
         it fails or times out.
     """
-    request_id = str(uuid.uuid4())
+    request_id: str = str(uuid.uuid4())
     send_json: dict[str, str | int | float] = {
         "Name": "",
         "UserID": "",
@@ -168,7 +168,7 @@ async def checkout(user_info: UserInfoPayload) -> bool:
             case Status():
                 send_json[key] = user_info[user_info_key].value
 
-    future = asyncio.get_running_loop().create_future()
+    future: asyncio.Future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
 
     try:
@@ -204,8 +204,8 @@ async def request_borrowed_items() -> Optional[tuple[list[datetime], list[Status
         A tuple containing lists of all borrowed times, item statuses, and item IDs. 
         Returns None if the request fails or times out.
     """
-    request_id = str(uuid.uuid4())
-    future = asyncio.get_running_loop().create_future()
+    request_id: str = str(uuid.uuid4())
+    future: asyncio.Future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
 
     try:
