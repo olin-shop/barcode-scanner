@@ -2,23 +2,31 @@
 Accessible constants for the backend.
 """
 
+import os
+from dotenv import load_dotenv
 from datetime import datetime, timedelta
 
-from dotenv import dotenv_values
+from quart import Response, jsonify
 
-config: dict = dotenv_values(".env")
+load_dotenv()
 
-NAME_URL: str = config["NAME_URL"]
+if not os.environ.get("NAME_URL"):
+    raise RuntimeError(
+        "Missing .env file! "
+        "Ask Shop Instructors for the .env file for the barcode scanner before testing and developing."
+    )
 
-ITEM_URL: str = config["ITEM_URL"]
+NAME_URL: str = os.environ["NAME_URL"]
 
-CHECKOUT_URL: str = config["CHECKOUT_URL"]
+ITEM_URL: str = os.environ["ITEM_URL"]
 
-BORROWED_ITEMS_URL: str = config["BORROWED_ITEMS_URL"]
+CHECKOUT_URL: str = os.environ["CHECKOUT_URL"]
 
-PORT: int = config["PORT"]
+BORROWED_ITEMS_URL: str = os.environ["BORROWED_ITEMS_URL"]
 
-HOST_IP: str = config["HOST_IP"]
+PORT: int = int(os.environ["PORT"])
+
+HOST_IP: str = os.environ["HOST_IP"]
 
 TIMEOUT: int = 10
 
@@ -60,7 +68,7 @@ def from_excel_date(num: float) -> datetime:
     excel_base: datetime = datetime(1899, 12, 30, 0, 0, 0)
 
     # Convert the float into a time difference of days
-    delta = timedelta(days=num)
+    delta: timedelta = timedelta(days=num)
 
     # Add the timedelta back to the base date
     return excel_base + delta
@@ -74,7 +82,7 @@ def to_excel_date(dt: datetime) -> float:
     # Base date accounting for Excel's 1900 leap year bug
     excel_base: datetime = datetime(1899, 12, 30, 0, 0, 0)
 
-    delta = dt - excel_base
+    delta: timedelta = dt - excel_base
 
     # Calculate days + fractional day for time
     return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400

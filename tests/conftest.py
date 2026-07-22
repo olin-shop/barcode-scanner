@@ -1,0 +1,40 @@
+"""
+Pytest configuration and global fixtures for the barcode scanner backend.
+Sets up environment variables, the Quart test client, and state isolation.
+"""
+import pytest
+import os
+import sys
+
+# Inject src directory into sys.path so tests can import backend seamlessly
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
+
+# Mock out environment variables so tests don't crash when running without a real .env
+os.environ["NAME_URL"] = "http://fake-url/names"
+os.environ["ITEM_URL"] = "http://fake-url/items"
+os.environ["CHECKOUT_URL"] = "http://fake-url/checkout"
+os.environ["BORROWED_ITEMS_URL"] = "http://fake-url/borrowed-items"
+os.environ["PORT"] = "5000"
+os.environ["HOST_IP"] = "127.0.0.1"
+
+from typing import AsyncGenerator, Generator
+from quart import Quart
+from quart.testing import QuartClient
+from backend.endpoints import quart_app
+from backend.app_state import pending_requests
+
+@pytest.fixture
+def app() -> Quart:
+    """Fixture that provides the Quart application instance."""
+    return quart_app
+
+@pytest.fixture
+def client(app: Quart) -> QuartClient:
+    """Fixture that provides a Quart test client for making requests."""
+    return app.test_client()
+
+@pytest.fixture(autouse=True)
+def clear_state() -> Generator[None, None, None]:
+    """Clear any pending requests before each test to ensure complete isolation."""
+    pending_requests.clear()
+    yield
