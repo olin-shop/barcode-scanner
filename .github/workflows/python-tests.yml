@@ -1,0 +1,58 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-matrix:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        
+    - name: Install Poetry
+      run: pipx install poetry
+        
+    - name: Install dependencies
+      run: poetry install --no-root
+      
+    - name: Run unit tests (Fake Database)
+      run: poetry run pytest -m "not integration" -v
+
+  test-raspberry-pi:
+    name: Test on Raspberry Pi (ARM64 emulation)
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run tests in ARM64 container
+      uses: uraimo/run-on-arch-action@v2
+      with:
+        arch: aarch64
+        distro: ubuntu22.04
+        githubToken: ${{ github.token }}
+        install: |
+          apt-get update -y
+          apt-get install -y software-properties-common curl
+          add-apt-repository -y ppa:deadsnakes/ppa
+          apt-get update -y
+          apt-get install -y python3.12 python3.12-venv curl
+          curl -sSL https://install.python-poetry.org | python3.12 -
+        run: |
+          export PATH="/root/.local/bin:$PATH"
+          poetry env use python3.12
+          poetry install --no-root
+          poetry run pytest -m "not integration" -v
