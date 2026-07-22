@@ -3,10 +3,13 @@ How all of the local endpoints function, receiving webhook callbacks and matchin
 """
 
 from datetime import datetime
+from typing import Optional
 
-from quart import Quart, jsonify, request, Response
+from quart import Quart, request, Response
 
-from backend.backend_constants import from_excel_date, EMPTY, pending_requests
+from backend.backend_types import Status
+from backend.backend_constants import from_excel_date, EMPTY
+from backend.app_state import pending_requests
 
 quart_app: Quart = Quart(__name__)
 
@@ -21,10 +24,10 @@ async def checkout() -> Response:
     transmission was successful, and uses it to fulfill the asynchronous placeholder. 
     This un-pauses the original `checkout()` request in `requests.py`.
     """
-    payload = await request.get_json()
-    request_id = payload.get("RequestID")
+    payload: dict = await request.get_json()
+    request_id: Optional[str] = payload.get("RequestID")
 
-    has_been_sent = payload.get("Sent") == "Received"
+    has_been_sent: bool = payload.get("Sent") == "Received"
     if request_id and request_id in pending_requests:
         pending_requests.pop(request_id).set_result(has_been_sent)
 
@@ -40,22 +43,18 @@ async def get_item_route() -> Response:
     and enum status, extracts the unique request identifier, and fulfills the 
     asynchronous placeholder to un-pause the original `get_item()` request.
     """
-    payload = await request.get_json()
-    request_id = payload.get("RequestID")
+    payload: dict = await request.get_json()
+    request_id: Optional[str] = payload.get("RequestID")
     item_name: str = payload.get("ItemName", "")
     item_status: Status = Status.NONE
 
-    match payload.get("ItemStatus"):
-        case Status.INSTOCK.value:
-            item_status = Status.INSTOCK
-        case Status.MISSING.value:
-            item_status = Status.MISSING
-        case Status.BORROWED.value:
-            item_status = Status.BORROWED
-        case Status.NONE.value:
-            raise ValueError("Item is of unknown status!")
-        case _:
-            raise ValueError("Item is of unknown status!")
+    try:
+        item_status = Status(payload.get("ItemStatus"))
+    except ValueError:
+        item_status = Status.NONE
+
+    if item_status == Status.NONE:
+        raise ValueError("Item is of unknown status!")
 
     if request_id and request_id in pending_requests:
         pending_requests.pop(request_id).set_result((item_name, item_status))
@@ -74,7 +73,7 @@ async def get_name_route() -> Response:
     the original `get_name()` request.
     """
     payload: dict = await request.get_json()
-    request_id = payload.get("RequestID")
+    request_id: Optional[str] = payload.get("RequestID")
 
     name: str = payload.get("Name", "")
     email: str = payload.get("Email", "")
@@ -87,17 +86,14 @@ async def get_name_route() -> Response:
     for row in excel_data:
         item_ids.append(int(row["ItemID"]))
         
-        match row["ItemStatus"]:
-            case Status.INSTOCK.value:
-                statuses.append(Status.INSTOCK)
-            case Status.MISSING.value:
-                statuses.append(Status.MISSING)
-            case Status.BORROWED.value:
-                statuses.append(Status.BORROWED)
-            case _:
-                statuses.append(Status.NONE)
+        try:
+            status: Status = Status(row["ItemStatus"])
+        except ValueError:
+            status = Status.NONE
+            
+        statuses.append(status)
                 
-        date_number = float(row["DateBorrowed"])
+        date_number: float = float(row["DateBorrowed"])
         
         time_borrowed.append(from_excel_date(date_number))
 
@@ -117,8 +113,8 @@ async def request_borrowed_items_route() -> Response:
     fulfills the asynchronous placeholder to un-pause the original 
     `request_borrowed_items()` request.
     """
-    payload = await request.get_json()
-    request_id = payload.get("RequestID")
+    payload: dict = await request.get_json()
+    request_id: Optional[str] = payload.get("RequestID")
     excel_data: list[dict] = payload.get("excelData", [])
 
     time_borrowed: list[datetime] = []
@@ -128,21 +124,19 @@ async def request_borrowed_items_route() -> Response:
     for row in excel_data:
         item_ids.append(int(row["ItemID"]))
 
-        date_number = float(row["DateBorrowed"])
+        date_number: float = float(row["DateBorrowed"])
         time_borrowed.append(from_excel_date(date_number))
-        status_str = row["ItemStatus"]
+        status_str: str = row["ItemStatus"]
 
-        match status_str:
-            case Status.INSTOCK.value:
-                statuses.append(Status.INSTOCK)
-            case Status.MISSING.value:
-                statuses.append(Status.MISSING)
-            case Status.BORROWED.value:
-                statuses.append(Status.BORROWED)
-            case _:
-                raise ValueError(
-                    "Supposed to be one of these three, check the Excel sheet for errors."
-                )
+        try:
+            status: Status = Status(status_str)
+        except ValueError:
+            status = Status.NONE
+
+        if status == Status.NONE:
+            raise ValueError("Supposed to be one of these three, check the Excel sheet for errors.")
+            
+        statuses.append(status)
 
     if request_id and request_id in pending_requests:
         pending_requests.pop(request_id).set_result((time_borrowed, statuses, item_ids))
