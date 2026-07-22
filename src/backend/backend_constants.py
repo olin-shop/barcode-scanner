@@ -28,7 +28,7 @@ HOST_IP: str = config["HOST_IP"]
 
 TIMEOUT: int = 10
 
-EMPTY: Response = jsonify([])
+EMPTY_DATA: list = []
 
 db_to_class_conversion: dict[str, str] = {
     "Name": "name",
