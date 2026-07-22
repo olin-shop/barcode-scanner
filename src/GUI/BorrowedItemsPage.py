@@ -19,8 +19,11 @@ logger = logging.getLogger(__name__)
 # =====================================================
 
 class BorrowedItemsPage(ctk.CTkFrame):
+    """
+    Page displaying the list of items currently borrowed by the user.
+    """
 
-    def __init__(self, master):
+    def __init__(self, master: ctk.CTk | ctk.CTkFrame) -> None:
         super().__init__(master)
 
         self.configure(fg_color=const.BG_LIGHT_BLUE)

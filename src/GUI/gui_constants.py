@@ -34,12 +34,6 @@ LIGHT_BLUE: str = "#EBF6FC"           # Soft Light Blue
 CONFIRM_BLUE: str = "#009DD1"         # Olin Blue confirm action
 CONFIRM_BLUE_HOVER: str = "#0086B3"
 
-# Backward-compatibility aliases if imported elsewhere
-DARK_GREEN = DARK_BLUE
-LIGHT_GREEN = LIGHT_BLUE
-CONFIRM_GREEN = CONFIRM_BLUE
-CONFIRM_GREEN_HOVER = CONFIRM_BLUE_HOVER
-
 CANCEL_RED: str = "#D9383A"
 CANCEL_RED_HOVER: str = "#B82A2C"
 

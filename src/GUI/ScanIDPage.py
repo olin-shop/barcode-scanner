@@ -8,8 +8,11 @@ from GUI import gui_constants as const
 # =====================================================
 
 class ScanIDPage(ctk.CTkFrame):
+    """
+    Initial page asking the user to scan their Olin ID.
+    """
 
-    def __init__(self, master):
+    def __init__(self, master: ctk.CTk | ctk.CTkFrame) -> None:
         super().__init__(master)
 
         self.configure(fg_color=const.BG_LIGHT_BLUE)

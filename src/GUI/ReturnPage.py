@@ -18,8 +18,11 @@ logger = logging.getLogger(__name__)
 # =====================================================
 
 class ConfirmReturnPage(ctk.CTkFrame):
+    """
+    Page asking the user to confirm returning an item.
+    """
 
-    def __init__(self, master):
+    def __init__(self, master: ctk.CTk | ctk.CTkFrame) -> None:
         super().__init__(master)
 
         self.configure(fg_color=const.BG_LIGHT_BLUE)
