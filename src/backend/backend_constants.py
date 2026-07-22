@@ -5,35 +5,45 @@ Accessible constants for the backend.
 import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 if not os.environ.get("NAME_URL"):
-    raise RuntimeError(
-        "Missing .env file! "
-        "Ask Shop Instructors for the .env file for the barcode scanner before testing and developing."
-    )
+    logger.error("Missing .env file!")
+    logger.error("Please ask Shop Instructors for the .env file for the barcode scanner before testing and developing.")
 
-NAME_URL: str = os.environ["NAME_URL"]
+try:
+    NAME_URL: str = os.environ["NAME_URL"]
 
-ITEM_URL: str = os.environ["ITEM_URL"]
+    ITEM_URL: str = os.environ["ITEM_URL"]
 
-CHECKOUT_URL: str = os.environ["CHECKOUT_URL"]
+    CHECKOUT_URL: str = os.environ["CHECKOUT_URL"]
 
-BORROWED_ITEMS_URL: str = os.environ["BORROWED_ITEMS_URL"]
+    BORROWED_ITEMS_URL: str = os.environ["BORROWED_ITEMS_URL"]
 
-PORT: int = int(os.environ["PORT"])
+    PORT: int = int(os.environ["PORT"])
 
-HOST_IP: str = os.environ["HOST_IP"]
+    HOST_IP: str = os.environ["HOST_IP"]
+    logger.info("Loaded backend environment constants successfully (Host: %s:%d).", HOST_IP, PORT)
+except KeyError as err:
+    logger.error("Required environment variable missing from .env: %s", err)
+    raise
 
 TIMEOUT: int = 10
 
 EMPTY_DATA: list = []
 
 SMTP_HOST: str = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+
 SMTP_PORT: int = int(os.environ.get("SMTP_PORT", 587))
+
 SMTP_USERNAME: str = os.environ.get("SMTP_USERNAME", "")
+
 SMTP_PASSWORD: str = os.environ.get("SMTP_PASSWORD", "")
+
 FROM_EMAIL: str = os.environ.get("FROM_EMAIL", SMTP_USERNAME)
 
 # An item is considered overdue once it's been borrowed longer than this.
