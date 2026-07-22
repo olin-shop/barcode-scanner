@@ -5,10 +5,10 @@ How all of the local endpoints function, receiving webhook callbacks and matchin
 from datetime import datetime
 from typing import Optional
 
-from quart import Quart, request, Response
+from quart import Quart, request, Response, jsonify
 
 from backend.backend_types import Status
-from backend.backend_constants import from_excel_date, EMPTY
+from backend.backend_constants import from_excel_date, EMPTY_DATA
 from backend.app_state import pending_requests
 
 quart_app: Quart = Quart(__name__)
@@ -31,7 +31,7 @@ async def checkout() -> Response:
     if request_id and request_id in pending_requests:
         pending_requests.pop(request_id).set_result(has_been_sent)
 
-    return EMPTY
+    return jsonify(EMPTY_DATA)
 
 
 @quart_app.route("/items", methods=["POST"])
@@ -59,7 +59,7 @@ async def get_item_route() -> Response:
     if request_id and request_id in pending_requests:
         pending_requests.pop(request_id).set_result((item_name, item_status))
 
-    return EMPTY
+    return jsonify(EMPTY_DATA)
 
 
 @quart_app.route("/names", methods=["POST"])
@@ -84,23 +84,26 @@ async def get_name_route() -> Response:
     item_ids: list[int] = []
 
     for row in excel_data:
-        item_ids.append(int(row["ItemID"]))
-        
         try:
-            status: Status = Status(row["ItemStatus"])
-        except ValueError:
-            status = Status.NONE
+            item_id: int = int(row.get("ItemID", 0))
+            date_number: float = float(row.get("DateBorrowed", 0.0))
+            status: Status = Status(row.get("ItemStatus", ""))
             
-        statuses.append(status)
+            if status == Status.NONE:
+                raise ValueError(f"Invalid status NONE for item {item_id}")
                 
-        date_number: float = float(row["DateBorrowed"])
-        
-        time_borrowed.append(from_excel_date(date_number))
+            item_ids.append(item_id)
+            time_borrowed.append(from_excel_date(date_number))
+            statuses.append(status)
+        except (ValueError, KeyError, TypeError) as e:
+            if request_id and request_id in pending_requests:
+                pending_requests.pop(request_id).set_exception(ValueError(f"Corrupted row data: {e}"))
+            return jsonify(EMPTY_DATA)
 
     if request_id and request_id in pending_requests:
         pending_requests.pop(request_id).set_result((name, email, time_borrowed, statuses, item_ids))
 
-    return EMPTY
+    return jsonify(EMPTY_DATA)
 
 
 @quart_app.route("/borrowed-items", methods=["POST"])
@@ -122,23 +125,23 @@ async def request_borrowed_items_route() -> Response:
     item_ids: list[int] = []
 
     for row in excel_data:
-        item_ids.append(int(row["ItemID"]))
-
-        date_number: float = float(row["DateBorrowed"])
-        time_borrowed.append(from_excel_date(date_number))
-        status_str: str = row["ItemStatus"]
-
         try:
-            status: Status = Status(status_str)
-        except ValueError:
-            status = Status.NONE
-
-        if status == Status.NONE:
-            raise ValueError("Supposed to be one of these three, check the Excel sheet for errors.")
+            item_id: int = int(row.get("ItemID", 0))
+            date_number: float = float(row.get("DateBorrowed", 0.0))
+            status: Status = Status(row.get("ItemStatus", ""))
             
-        statuses.append(status)
+            if status == Status.NONE:
+                raise ValueError(f"Invalid status NONE for item {item_id}")
+                
+            item_ids.append(item_id)
+            time_borrowed.append(from_excel_date(date_number))
+            statuses.append(status)
+        except (ValueError, KeyError, TypeError) as e:
+            if request_id and request_id in pending_requests:
+                pending_requests.pop(request_id).set_exception(ValueError(f"Corrupted row data: {e}"))
+            return jsonify(EMPTY_DATA)
 
     if request_id and request_id in pending_requests:
         pending_requests.pop(request_id).set_result((time_borrowed, statuses, item_ids))
 
-    return EMPTY
+    return jsonify(EMPTY_DATA)

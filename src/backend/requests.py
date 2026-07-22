@@ -68,6 +68,9 @@ async def get_name(
         pending_requests.pop(request_id, None)
         print("Timeout: Power Automate never responded.")
         return None
+    except ValueError as e:
+        print(f"Data Error: {e}")
+        return None
 
 
 async def get_item(barcode: int) -> Optional[tuple[str, Status]]:
@@ -110,6 +113,9 @@ async def get_item(barcode: int) -> Optional[tuple[str, Status]]:
     except asyncio.TimeoutError:
         pending_requests.pop(request_id, None)
         print("Timeout: Power Automate never responded.")
+        return None
+    except ValueError as e:
+        print(f"Data Error: {e}")
         return None
 
 
@@ -186,6 +192,9 @@ async def checkout(user_info: UserInfoPayload) -> bool:
         pending_requests.pop(request_id, None)
         print("Timeout: Power Automate never responded.")
         return False
+    except ValueError as e:
+        print(f"Data Error: {e}")
+        return False
 
 
 async def request_borrowed_items() -> Optional[tuple[list[datetime], list[Status], list[int]]]:
@@ -222,4 +231,7 @@ async def request_borrowed_items() -> Optional[tuple[list[datetime], list[Status
     except asyncio.TimeoutError:
         pending_requests.pop(request_id, None)
         print("Timeout: Power Automate never responded.")
+        return None
+    except ValueError as e:
+        print(f"Data Error: {e}")
         return None
