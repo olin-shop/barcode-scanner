@@ -22,6 +22,20 @@ HOST_IP: str = config["HOST_IP"]
 
 TIMEOUT: int = 10
 
+# --- Overdue-item email reminders ---------------------------------------
+
+SMTP_HOST: str = config.get("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT: int = int(config.get("SMTP_PORT", 587))
+SMTP_USERNAME: str = config.get("SMTP_USERNAME", "")
+SMTP_PASSWORD: str = config.get("SMTP_PASSWORD", "")
+FROM_EMAIL: str = config.get("FROM_EMAIL", SMTP_USERNAME)
+
+# An item is considered overdue once it's been borrowed longer than this.
+OVERDUE_AFTER_DAYS: int = int(config.get("OVERDUE_AFTER_DAYS", 14))
+
+# Local hour (0-23) at which the daily overdue check/reminder run fires.
+REMINDER_HOUR: int = int(config.get("REMINDER_HOUR", 8))
+
 db_to_class_conversion: dict[str, str] = {
     "Name": "name",
     "UserID": "user_id",
