@@ -15,7 +15,8 @@ dependencies = [
     "pandas (>=3.0.3,<4.0.0)",
     "python-dotenv (>=1.2.2,<2.0.0)",
     "quart (>=0.20.0,<0.21.0)",
-    "requests-async (>=0.2.4,<0.3.0)"
+    "requests-async (>=0.2.4,<0.3.0)",
+    "apscheduler (>=3.10.0,<4.0.0)"
 ]
 
 

@@ -1,15 +1,18 @@
-'''
-check if borrowed items are late daily, send an automated email to return the item after two weeks. 
-Send daily email after that. Email stops being sent once status is no longer overdue.
-'''
-# imports
+"""
+Overdue item email reminder service.
+Checks daily for overdue borrowed items and dispatches automated reminder emails.
+"""
+
 import asyncio
+import logging
 import smtplib
 from datetime import datetime, timedelta
 from email.message import EmailMessage
- 
-from backend.backend_types import Status
-from backend.requests import get_item, request_borrowed_items
+from typing import Sequence
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+
 from backend.backend_constants import (
     FROM_EMAIL,
     OVERDUE_AFTER_DAYS,
@@ -20,88 +23,111 @@ from backend.backend_constants import (
     SMTP_USERNAME,
     TIMEOUT,
 )
+from backend.backend_types import Status
+from backend.requests import get_item, request_borrowed_items
+
+logger = logging.getLogger(__name__)
+
+# Global scheduler instance
+scheduler = AsyncIOScheduler()
+
+
+def start_email_scheduler() -> AsyncIOScheduler:
+    """
+    Initializes and starts the APScheduler AsyncIOScheduler to run
+    `send_overdue_reminders` daily at REMINDER_HOUR.
+    """
+    if not scheduler.running:
+        trigger = CronTrigger(hour=REMINDER_HOUR, minute=0)
+        scheduler.add_job(
+            send_overdue_reminders,
+            trigger=trigger,
+            id="daily_overdue_reminders",
+            replace_existing=True,
+        )
+        scheduler.start()
+        logger.info("APScheduler started: daily overdue reminder job scheduled for %02d:00.", REMINDER_HOUR)
+    return scheduler
+
 
 async def run_daily_overdue_reminder_job() -> None:
     """
-    Runs forever: sleeps until the next REMINDER_HOUR (default 8:00 AM
-    local time), sends that morning's overdue reminders, then repeats.
- 
-    Intended to be started once, alongside the server (see
-    endpoints.py's before_serving hook).
+    Backwards-compatible entrypoint: starts the APScheduler daily overdue reminder job.
     """
-    while True:
-        await asyncio.sleep(_seconds_until_next_run(REMINDER_HOUR))
-        try:
-            await send_overdue_reminders()
-        except Exception as e:
-            # A single bad morning shouldn't kill the recurring job.
-            print(f"[REMINDER] Unexpected error while sending overdue reminders: {e}")
- 
- 
+    start_email_scheduler()
+
+
 async def send_overdue_reminders() -> None:
     """
     Fetches the current borrowed-items list and emails a reminder to
     every borrower whose item is overdue.
     """
-    items = await request_borrowed_items()
+    try:
+        items = await request_borrowed_items()
+    except Exception as e:
+        logger.error("[REMINDER] Failed to fetch borrowed items: %s", e)
+        return
+
     now = datetime.now()
     cutoff = timedelta(days=OVERDUE_AFTER_DAYS)
- 
-    overdue = [
-        record
-        for record in items
-        if record[5] == Status.BORROWED and (now - record[4]) > cutoff
-    ]
- 
-    if not overdue:
-        print("[REMINDER] No overdue items today.")
+
+    overdue_records: list[tuple[str, str, str, datetime]] = []
+    for user_id, name, email, item_id, borrowed_at, status in items:
+        if status == Status.BORROWED and (now - borrowed_at) > cutoff:
+            item_name, _ = await get_item(item_id)
+            if not item_name:
+                item_name = f"Item {item_id}"
+            overdue_records.append((name, email, item_name, borrowed_at))
+
+    if not overdue_records:
+        logger.info("[REMINDER] No overdue items today.")
         return
- 
-    print(f"[REMINDER] {len(overdue)} overdue item(s) found - sending reminders.")
-    for user_id, name, email, item_id, borrowed_at, status in overdue:
-        item_name, _ = await get_item(item_id)
-        if not item_name:
-            item_name = f"Item {item_id}"
-        await asyncio.to_thread(_send_reminder_email, name, email, item_name, borrowed_at)
- 
- 
-def _seconds_until_next_run(hour: int) -> float:
-    """Seconds from now until the next occurrence of `hour`:00 local time."""
-    now = datetime.now()
-    target = now.replace(hour=hour, minute=0, second=0, microsecond=0)
-    if target <= now:
-        target += timedelta(days=1)
-    return (target - now).total_seconds()
- 
- 
-def _send_reminder_email(name: str, email: str, item_name: str, borrowed_at: datetime) -> None:
-    """Sends a single overdue reminder email. Runs in a worker thread since
-    smtplib is blocking."""
-    if not email:
-        print(f"[REMINDER] No email on file for {name!r}; skipping reminder for {item_name!r}.")
+
+    logger.info("[REMINDER] %d overdue item(s) found - sending reminders.", len(overdue_records))
+    
+    # Offload blocking SMTP batch execution to a thread
+    await asyncio.to_thread(_send_batch_reminder_emails, overdue_records)
+
+
+def _send_batch_reminder_emails(
+    overdue_records: Sequence[tuple[str, str, str, datetime]]
+) -> None:
+    """
+    Opens a single SMTP context manager connection, loops through overdue users
+    to send all emails, and lets the context manager close the connection at the end.
+    """
+    valid_records = [rec for rec in overdue_records if rec[1]]
+    skipped_count = len(overdue_records) - len(valid_records)
+    if skipped_count > 0:
+        logger.warning("[REMINDER] Skipped %d record(s) missing email addresses.", skipped_count)
+
+    if not valid_records:
         return
- 
-    days_out = (datetime.now() - borrowed_at).days
- 
-    message = EmailMessage()
-    message["Subject"] = f"Reminder: '{item_name}' is overdue"
-    message["From"] = FROM_EMAIL
-    message["To"] = email
-    message.set_content(
-        f"Hi {name or 'there'},\n\n"
-        f"Our records show '{item_name}' has been checked out since "
-        f"{borrowed_at.strftime('%b %d, %Y')} ({days_out} days ago) and hasn't "
-        f"been returned yet. Please return it at your earliest convenience.\n\n"
-        f"This is an automated reminder and will be sent again each morning "
-        f"until the item is returned."
-    )
- 
+
     try:
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=TIMEOUT) as server:
             server.starttls()
             if SMTP_USERNAME:
                 server.login(SMTP_USERNAME, SMTP_PASSWORD)
-            server.send_message(message)
-        print(f"[REMINDER] Sent overdue reminder to {email} for '{item_name}'.")
-    except Exception as e:
-        print(f"[REMINDER] Failed to email {email} about '{item_name}': {e}")
+
+            for name, email, item_name, borrowed_at in valid_records:
+                days_out = (datetime.now() - borrowed_at).days
+                message = EmailMessage()
+                message["Subject"] = f"Reminder: '{item_name}' is overdue"
+                message["From"] = FROM_EMAIL
+                message["To"] = email
+                message.set_content(
+                    f"Hi {name or 'there'},\n\n"
+                    f"Our records show '{item_name}' has been checked out since "
+                    f"{borrowed_at.strftime('%b %d, %Y')} ({days_out} days ago) and hasn't "
+                    f"been returned yet. Please return it at your earliest convenience.\n\n"
+                    f"This is an automated reminder and will be sent again each morning "
+                    f"until the item is returned."
+                )
+                try:
+                    server.send_message(message)
+                    logger.info("[REMINDER] Sent overdue reminder to %s for '%s'.", email, item_name)
+                except Exception as send_err:
+                    logger.error("[REMINDER] Failed to email %s about '%s': %s", email, item_name, send_err)
+    except Exception as connection_err:
+        logger.error("[REMINDER] SMTP session error: %s", connection_err)
