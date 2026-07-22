@@ -11,6 +11,7 @@ than reached for as a global — see GUI/session_manager.py.
 import asyncio
 import logging
 import threading
+from typing import Any, Callable, Coroutine
 
 import customtkinter as ctk
 
@@ -116,14 +117,6 @@ class App(ctk.CTk):
         self.show_frame("FinalConfirmationPage")
         self.after(const.FINAL_CONFIRM_DISMISS_MS, self.reset_session)
 
-    def display_popup(self, text: str) -> ctk.CTkToplevel:
-        """Display a centered, frameless warning popup with rounded corners and a close button."""
-        return show_popup(text, self)
-
-    def show_popup(self, text: str) -> ctk.CTkToplevel:
-        """Display a centered, frameless warning popup with rounded corners and a close button."""
-        return show_popup(text, self)
-
     # Barcode input routing
 
     def _on_key(self, event) -> None:
@@ -205,9 +198,10 @@ class App(ctk.CTk):
             self.frames["ConfirmBorrowPage"].load(item_name, item_barcode)
             self.show_frame("ConfirmBorrowPage")
 
-    # make asynchronous?
-    def run_async(self, coro, callback):
-        """Submit a coroutine; call callback(result) on the main thread when done."""
+    def run_async(self, coro: Coroutine[Any, Any, Any], callback: Callable[[Any], None]) -> None:
+        """
+        Submit a coroutine; call callback(result) on the main thread when done.
+        """
         future = asyncio.run_coroutine_threadsafe(coro, self.loop)
         future.add_done_callback(
             lambda f: self.after(0, callback, f.result())

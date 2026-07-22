@@ -2,9 +2,22 @@
 Types for the backend.
 """
 
-from enum import StrEnum
-from typing import TypedDict
+from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
+from typing import Optional, TypedDict
+
+@dataclass
+class BorrowedItem:
+    name: str
+    barcode: str
+    borrowed_at: datetime
+
+def to_item_id(barcode: str) -> Optional[int]:
+    try:
+        return int(barcode)
+    except ValueError:
+        return None
 
 
 class Status(StrEnum):

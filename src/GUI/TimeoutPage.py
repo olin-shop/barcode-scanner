@@ -7,8 +7,11 @@ from GUI import gui_constants as const
 # =====================================================
 
 class SessionTimeoutPage(ctk.CTkFrame):
+    """
+    Timeout page shown when the user is inactive for too long.
+    """
 
-    def __init__(self, master):
+    def __init__(self, master: ctk.CTk | ctk.CTkFrame) -> None:
         super().__init__(master)
 
         self.configure(fg_color=const.BG_LIGHT_BLUE)

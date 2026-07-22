@@ -50,13 +50,6 @@ def start_email_scheduler() -> AsyncIOScheduler:
     return scheduler
 
 
-async def run_daily_overdue_reminder_job() -> None:
-    """
-    Backwards-compatible entrypoint: starts the APScheduler daily overdue reminder job.
-    """
-    start_email_scheduler()
-
-
 async def send_overdue_reminders() -> None:
     """
     Fetches the current borrowed-items list and emails a reminder to
