@@ -2,29 +2,31 @@
 Accessible constants for the backend.
 """
 
+import os
+from dotenv import load_dotenv
 from datetime import datetime, timedelta
-from dotenv import dotenv_values
 
 from quart import Response, jsonify
 
-config: dict = dotenv_values(".env")
-if not config:
+load_dotenv()
+
+if not os.environ.get("NAME_URL"):
     raise RuntimeError(
         "Missing .env file! "
         "Ask Shop Instructors for the .env file for the barcode scanner before testing and developing."
     )
 
-NAME_URL: str = config["NAME_URL"]
+NAME_URL: str = os.environ["NAME_URL"]
 
-ITEM_URL: str = config["ITEM_URL"]
+ITEM_URL: str = os.environ["ITEM_URL"]
 
-CHECKOUT_URL: str = config["CHECKOUT_URL"]
+CHECKOUT_URL: str = os.environ["CHECKOUT_URL"]
 
-BORROWED_ITEMS_URL: str = config["BORROWED_ITEMS_URL"]
+BORROWED_ITEMS_URL: str = os.environ["BORROWED_ITEMS_URL"]
 
-PORT: int = config["PORT"]
+PORT: int = int(os.environ["PORT"])
 
-HOST_IP: str = config["HOST_IP"]
+HOST_IP: str = os.environ["HOST_IP"]
 
 TIMEOUT: int = 10
 
