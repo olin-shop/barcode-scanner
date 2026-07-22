@@ -3,10 +3,8 @@ Accessible constants for the backend.
 """
 
 import os
-from dotenv import load_dotenv
 from datetime import datetime, timedelta
-
-from quart import Response, jsonify
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -32,17 +30,17 @@ TIMEOUT: int = 10
 
 # --- Overdue-item email reminders ---------------------------------------
 
-SMTP_HOST: str = config.get("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT: int = int(config.get("SMTP_PORT", 587))
-SMTP_USERNAME: str = config.get("SMTP_USERNAME", "")
-SMTP_PASSWORD: str = config.get("SMTP_PASSWORD", "")
-FROM_EMAIL: str = config.get("FROM_EMAIL", SMTP_USERNAME)
+SMTP_HOST: str = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT: int = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USERNAME: str = os.environ.get("SMTP_USERNAME", "")
+SMTP_PASSWORD: str = os.environ.get("SMTP_PASSWORD", "")
+FROM_EMAIL: str = os.environ.get("FROM_EMAIL", SMTP_USERNAME)
 
 # An item is considered overdue once it's been borrowed longer than this.
-OVERDUE_AFTER_DAYS: int = int(config.get("OVERDUE_AFTER_DAYS", 14))
+OVERDUE_AFTER_DAYS: int = int(os.environ.get("OVERDUE_AFTER_DAYS", "14"))
 
 # Local hour (0-23) at which the daily overdue check/reminder run fires.
-REMINDER_HOUR: int = int(config.get("REMINDER_HOUR", 8))
+REMINDER_HOUR: int = int(os.environ.get("REMINDER_HOUR", "8"))
 
 db_to_class_conversion: dict[str, str] = {
     "Name": "name",
