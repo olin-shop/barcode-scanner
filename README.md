@@ -5,10 +5,15 @@ A barcode scanner for our shop.
 
 This project contains a Python backend (in `src/backend/`) that coordinates requests between the barcode scanner and the Power Automate workflows.
 
-### Environment Variables
+### Environment Variables & Installation
 **IMPORTANT:** To run this backend, you must have a `.env` file in the root directory containing the required webhook URLs.
 
 **Ask Shop Instructors for the `.env` file for the barcode scanner before testing and developing.**
+
+After securing the `.env` file, install all backend dependencies using Poetry:
+```bash
+poetry install
+```
 
 ### Backend Architecture Overview
 
@@ -38,3 +43,23 @@ If you are a new developer or an AI assistant adding features to this codebase, 
 3. **Handle Global State Carefully**: Any global or mutable state (such as `pending_requests`) should be kept inside `src/backend/app_state.py` or attached directly to the application context. `backend_constants.py` is strictly for immutable variables.
 4. **Use Explicit Enums**: Use the `Status` string-enum defined in `backend_types.py` for checking item states rather than loose strings to prevent typos.
 5. **Delete Dead Code**: If a file or function is no longer used, delete it. Make sure there is a commit at one point and time keeping it deprecated, and then delete it in the next commit.
+
+## Testing
+
+The backend is fully tested using `pytest`. There are two main test suites: 
+
+### 1. Simulated Unit Tests (Fake Database)
+Run the isolated unit tests with:
+```bash
+poetry run pytest -m "not integration"
+```
+**For AI Assistants & Developers**: 
+These tests utilize a `fake_power_automate` mock located in `tests/backend/test_requests.py`. This mock uses a `FakeDatabase` class that holds dummy users and items. When the backend sends a request to Power Automate, the mock intercepts it, updates the `FakeDatabase` state, and automatically hits the Quart Webhook callbacks to fulfill the `asyncio.Future` promises. 
+If you need to write new requests or endpoints, you can easily add logic to `FakeDatabase` to simulate how Power Automate responds!
+
+### 2. Live Integration Tests
+If you want to test your local backend against the **real** Power Automate flows (requires a valid `.env` file), run:
+```bash
+poetry run pytest -m integration
+```
+This suite automatically skips execution in GitHub Actions or if your `.env` file lacks valid URLs.
