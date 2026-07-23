@@ -8,8 +8,14 @@ import os
 import sys
 from typing import Generator
 
-# Inject src directory into sys.path so tests can import modules seamlessly
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
+# Inject root and src directories into sys.path so tests can import modules seamlessly
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+SRC_DIR = os.path.join(ROOT_DIR, "src")
+TESTS_DIR = os.path.join(ROOT_DIR, "tests")
+
+for d in (SRC_DIR, ROOT_DIR, TESTS_DIR):
+    if d not in sys.path:
+        sys.path.insert(0, d)
 
 # Mock out environment variables so tests don't crash when running without a real .env
 os.environ["NAME_URL"] = "http://fake-url/names"

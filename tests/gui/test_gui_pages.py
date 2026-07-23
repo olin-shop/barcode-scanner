@@ -7,7 +7,7 @@ import pytest
 from pytest_mock import MockerFixture
 import customtkinter as ctk
 
-from tests.conftest import requires_gui
+from conftest import requires_gui
 from backend.backend_types import BorrowedItem
 from GUI.app import App
 from GUI.ScanIDPage import ScanIDPage
