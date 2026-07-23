@@ -73,10 +73,25 @@ class App(ctk.CTk):
         # your scanner uses (e.g. read lines from /dev/ttyUSB0).
         self._barcode_buffer = ""
         self.bind("<Key>", self._on_key)
+        import queue
+        self._async_queue: queue.Queue = queue.Queue()
+        self._poll_async_queue()
 
         # Async loop
         self.loop = asyncio.new_event_loop()
         threading.Thread(target=self.loop.run_forever, daemon=True).start()
+
+    def _poll_async_queue(self) -> None:
+        """Polls for callbacks queued by background async threads."""
+        try:
+            while not self._async_queue.empty():
+                callback, result = self._async_queue.get_nowait()
+                callback(result)
+        except Exception as e:
+            logger.error("Error processing async callback queue: %s", e, exc_info=True)
+        finally:
+            if self.winfo_exists():
+                self.after(20, self._poll_async_queue)
 
     # Navigation
 
@@ -176,14 +191,13 @@ class App(ctk.CTk):
 
     def _handle_id_scan(self, user_barcode: str) -> None:
         logger.info("Scanned user id: %s", user_barcode)
-        self.show_frame("LoadingPage")
-        self.run_async(
+        self.run_async_with_loading(
             self.session.start_session(user_barcode),
             self._on_user_items_loaded,
         )
 
     def _on_user_items_loaded(self, items) -> None:
-        if self._current_page_name() != "LoadingPage":
+        if self._current_page_name() in ("SessionTimeoutPage", "FinalConfirmationPage"):
             logger.info("Ignoring stale user-items response; session moved on.")
             return
         self.frames["BorrowedItemsPage"].load(items)
@@ -191,14 +205,13 @@ class App(ctk.CTk):
 
     def _handle_item_scan(self, item_barcode: str) -> None:
         logger.info("Scanned item id: %s", item_barcode)
-        self.show_frame("LoadingPage")
-        self.run_async(
+        self.run_async_with_loading(
             self.session.lookup_item(item_barcode),
             lambda result: self._on_item_looked_up(result, item_barcode),
         )
 
     def _on_item_looked_up(self, result: tuple[str, bool], item_barcode: str) -> None:
-        if self._current_page_name() != "LoadingPage":
+        if self._current_page_name() in ("SessionTimeoutPage", "FinalConfirmationPage"):
             logger.info("Ignoring stale item-lookup response; session moved on.")
             return
 
@@ -214,10 +227,37 @@ class App(ctk.CTk):
         """
         Submit a coroutine; call callback(result) on the main thread when done.
         """
+        def _on_done(f: asyncio.Future) -> None:
+            try:
+                res = f.result()
+                self._async_queue.put((callback, res))
+            except Exception as e:
+                logger.error("Async execution error: %s", e, exc_info=True)
+
         future = asyncio.run_coroutine_threadsafe(coro, self.loop)
-        future.add_done_callback(
-            lambda f: self.after(0, callback, f.result())
-        )
+        future.add_done_callback(_on_done)
+
+    def run_async_with_loading(
+        self,
+        coro: Coroutine[Any, Any, Any],
+        callback: Callable[[Any], None],
+        threshold_ms: int = 150,
+    ) -> None:
+        """
+        Submits a coroutine. Shows 'LoadingPage' only if execution takes longer than threshold_ms.
+        Prevents screen flickering for fast/cached operations.
+        """
+        loading_job = self.after(threshold_ms, lambda: self.show_frame("LoadingPage"))
+
+        def _wrapped_callback(result: Any) -> None:
+            if loading_job is not None:
+                try:
+                    self.after_cancel(loading_job)
+                except Exception:
+                    pass
+            callback(result)
+
+        self.run_async(coro, _wrapped_callback)
 
 
 if __name__ == "__main__":
