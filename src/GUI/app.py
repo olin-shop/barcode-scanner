@@ -65,6 +65,7 @@ class App(ctk.CTk):
             self.frames[F.__name__] = frame
             frame.place(relx=0, rely=0, relwidth=1, relheight=1)
 
+        self.current_page_name: str = "ScanIDPage"
         self.show_frame("ScanIDPage")
 
         # Wire up the simulated barcode entry (keyboard)
@@ -81,6 +82,7 @@ class App(ctk.CTk):
 
     def show_frame(self, page_name: str) -> None:
         """Raise a page with smooth movement and manage the session timeout timer."""
+        self.current_page_name = page_name
         target_frame = self.frames[page_name]
         target_frame.tkraise()
         # Smooth movement effect: subtle quick layout update & idle refresh
@@ -117,6 +119,14 @@ class App(ctk.CTk):
         self.show_frame("FinalConfirmationPage")
         self.after(const.FINAL_CONFIRM_DISMISS_MS, self.reset_session)
 
+    def display_popup(self, text: str) -> ctk.CTkToplevel:
+        """Display a centered, frameless warning popup with rounded corners and a close button."""
+        return show_popup(text, self)
+
+    def show_popup(self, text: str) -> ctk.CTkToplevel:
+        """Display a centered, frameless warning popup with rounded corners and a close button."""
+        return show_popup(text, self)
+
     # Barcode input routing
 
     def _on_key(self, event) -> None:
@@ -145,6 +155,8 @@ class App(ctk.CTk):
 
     def _current_page_name(self) -> str | None:
         """Return the name of whichever page is currently raised."""
+        if hasattr(self, "current_page_name") and self.current_page_name:
+            return self.current_page_name
         for name, frame in self.frames.items():
             try:
                 if frame.winfo_ismapped():

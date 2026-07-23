@@ -1,10 +1,10 @@
-name: Backend Tests
+name: Unit & Integration Tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "GUI" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "GUI" ]
 
 jobs:
   test-matrix:
@@ -21,6 +21,12 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: "3.12"
+
+    - name: Install system GUI dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-tk xvfb
         
     - name: Install Poetry
       run: pipx install poetry
@@ -28,7 +34,12 @@ jobs:
     - name: Install dependencies
       run: poetry install --no-root
       
-    - name: Run unit tests (Fake Database)
+    - name: Run unit tests with Xvfb (Linux)
+      if: runner.os == 'Linux'
+      run: xvfb-run poetry run pytest -m "not integration" -v
+
+    - name: Run unit tests (Windows & macOS)
+      if: runner.os != 'Linux'
       run: poetry run pytest -m "not integration" -v
 
   test-raspberry-pi:
@@ -46,13 +57,13 @@ jobs:
         githubToken: ${{ github.token }}
         install: |
           apt-get update -y
-          apt-get install -y software-properties-common curl
+          apt-get install -y software-properties-common curl xvfb python3-tk
           add-apt-repository -y ppa:deadsnakes/ppa
           apt-get update -y
-          apt-get install -y python3.12 python3.12-venv curl
+          apt-get install -y python3.12 python3.12-venv python3.12-tk curl
           curl -sSL https://install.python-poetry.org | python3.12 -
         run: |
           export PATH="/root/.local/bin:$PATH"
           poetry env use python3.12
           poetry install --no-root
-          poetry run pytest -m "not integration" -v
+          xvfb-run poetry run pytest -m "not integration" -v

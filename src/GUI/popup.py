@@ -22,7 +22,7 @@ def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ct
         the root/active window will be resolved automatically.
     """
     if parent is None:
-        master = ctk._default_root_mode
+        master = None
     elif hasattr(parent, "winfo_toplevel"):
         master = parent.winfo_toplevel()
     else:
