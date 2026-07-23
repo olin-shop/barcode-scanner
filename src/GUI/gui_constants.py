@@ -20,9 +20,9 @@ BG_LIGHT_BLUE: str = "#F0F7FC"
 SURFACE_CARD: str = "#FAFDFF"
 BORDER_BLUE: str = "#BCE3F7"
 
-OLIN_BLUE: str = "#009DD1"            # Olin Cerulean / Light Blue Accent
-OLIN_BLUE_HOVER: str = "#0086B3"
-OLIN_LIGHT_BLUE: str = "#EBF6FC"
+OLIN_BLUE: str = "#009BDF"            # Olin Cerulean / Light Blue Accent
+OLIN_BLUE_HOVER: str = "#0045BC"
+OLIN_LIGHT_BLUE: str = "#68C1D3"
 OLIN_LIGHT_BLUE_HOVER: str = "#D4ECF9"
 
 DARK_BLUE_TEXT: str = "#0F2537"       # Primary text color

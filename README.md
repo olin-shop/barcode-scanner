@@ -46,20 +46,34 @@ If you are a new developer or an AI assistant adding features to this codebase, 
 
 ## Testing
 
-The backend is fully tested using `pytest`. There are two main test suites: 
+The codebase is fully tested using `pytest` across Backend, Email, and GUI modules.
 
-### 1. Simulated Unit Tests (Fake Database)
-Run the isolated unit tests with:
+### Running the Unit Test Suite
+To run all unit tests (Backend, Email, and GUI) without hitting live external webhooks:
 ```bash
 poetry run pytest -m "not integration"
 ```
-**For AI Assistants & Developers**: 
-These tests utilize a `fake_power_automate` mock located in `tests/backend/test_requests.py`. This mock uses a `FakeDatabase` class that holds dummy users and items. When the backend sends a request to Power Automate, the mock intercepts it, updates the `FakeDatabase` state, and automatically hits the Quart Webhook callbacks to fulfill the `asyncio.Future` promises. 
-If you need to write new requests or endpoints, you can easily add logic to `FakeDatabase` to simulate how Power Automate responds!
+Or directly with Python:
+```bash
+python -m pytest -m "not integration"
+```
 
-### 2. Live Integration Tests
-If you want to test your local backend against the **real** Power Automate flows (requires a valid `.env` file), run:
+### Module Specific Testing
+- **Backend Tests**: `poetry run pytest tests/backend/`
+- **Email Service Tests**: `poetry run pytest tests/email/`
+- **GUI & Session Manager Tests**: `poetry run pytest tests/gui/`
+
+### Headless & Cross-Platform Testing (Linux / Raspberry Pi ARM64)
+- **Windows & macOS**: GUI and window tests run directly offscreen via window withdrawal.
+- **Linux / Raspberry Pi (headless without display)**: Use `xvfb-run` to emulate an X11 server for headless Tkinter window testing:
+  ```bash
+  xvfb-run poetry run pytest -m "not integration"
+  ```
+- **ARM64 Linux (Raspberry Pi 3B+)**: CI automatically runs the complete test matrix inside an ARM64 container (`aarch64`) with `xvfb-run`.
+
+### Live Integration Tests
+If you want to test against **real** Power Automate flows (requires a valid `.env` file), run:
 ```bash
 poetry run pytest -m integration
 ```
-This suite automatically skips execution in GitHub Actions or if your `.env` file lacks valid URLs.
+This suite skips automatically in GitHub Actions or if `.env` webhook URLs are omitted.

@@ -1,12 +1,14 @@
 """
-Pytest configuration and global fixtures for the barcode scanner backend.
-Sets up environment variables, the Quart test client, and state isolation.
+Pytest configuration and global fixtures for the barcode scanner backend and GUI.
+Sets up environment variables, the Quart test client, state isolation, and GUI display detection.
 """
+
 import pytest
 import os
 import sys
+from typing import Generator
 
-# Inject src directory into sys.path so tests can import backend seamlessly
+# Inject src directory into sys.path so tests can import modules seamlessly
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 # Mock out environment variables so tests don't crash when running without a real .env
@@ -17,21 +19,42 @@ os.environ["BORROWED_ITEMS_URL"] = "http://fake-url/borrowed-items"
 os.environ["PORT"] = "5000"
 os.environ["HOST_IP"] = "127.0.0.1"
 
-from typing import AsyncGenerator, Generator
 from quart import Quart
 from quart.testing import QuartClient
 from backend.endpoints import quart_app
 from backend.app_state import pending_requests
+
+
+def _check_gui_available() -> bool:
+    """Checks if Tkinter can initialize a window on the current OS/display environment."""
+    try:
+        import tkinter as tk
+        root = tk.Tk()
+        root.withdraw()
+        root.destroy()
+        return True
+    except Exception:
+        return False
+
+
+HAS_GUI = _check_gui_available()
+requires_gui = pytest.mark.skipif(
+    not HAS_GUI,
+    reason="GUI display server not available in this environment (headless Linux/CI without Xvfb)"
+)
+
 
 @pytest.fixture
 def app() -> Quart:
     """Fixture that provides the Quart application instance."""
     return quart_app
 
+
 @pytest.fixture
 def client(app: Quart) -> QuartClient:
     """Fixture that provides a Quart test client for making requests."""
     return app.test_client()
+
 
 @pytest.fixture(autouse=True)
 def clear_state() -> Generator[None, None, None]:
