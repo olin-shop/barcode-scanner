@@ -5,7 +5,7 @@ Unit tests for GUI/popup.py (show_popup dialog).
 import pytest
 import customtkinter as ctk
 
-from tests.conftest import requires_gui
+from conftest import requires_gui
 from GUI.popup import show_popup
 
 
