@@ -86,8 +86,12 @@ def fake_power_automate(client: QuartClient, mocker: MockerFixture, fake_db: Fak
     Simulates the Power Automate webhook callbacks by intercepting requests.post,
     querying/updating the FakeDatabase, and sending the callback via Quart test client.
     """
-    async def mock_post(url: str, json: dict, timeout: int) -> FakeResponse:
+    async def mock_post(url: str, json: dict, timeout: int, headers: dict = None) -> FakeResponse:
+        assert headers is not None, "API headers are missing!"
+        assert "x-api-key" in headers, "x-api-key header is missing!"
+        
         req_id = json.get("RequestID")
+        api_key_header = {"x-api-key": headers["x-api-key"]}
         
         async def trigger_callback() -> None:
             try:
@@ -99,7 +103,7 @@ def fake_power_automate(client: QuartClient, mocker: MockerFixture, fake_db: Fak
                         json.get("ItemStatus"), 
                         json.get("DateBorrowed")
                     )
-                    await client.post("/checkout", json={"RequestID": req_id, "Sent": "Received"})
+                    await client.post("/checkout", json={"RequestID": req_id, "Sent": "Received"}, headers=api_key_header)
                     
                 elif "ItemID" in json and "ItemStatus" not in json:
                     item_id = int(json.get("ItemID", 0))
@@ -108,7 +112,7 @@ def fake_power_automate(client: QuartClient, mocker: MockerFixture, fake_db: Fak
                         "RequestID": req_id,
                         "ItemName": item_data["ItemName"],
                         "ItemStatus": item_data["ItemStatus"]
-                    })
+                    }, headers=api_key_header)
                     
                 elif "UserID" in json and "ItemID" not in json:
                     user_id = json.get("UserID")
@@ -118,13 +122,13 @@ def fake_power_automate(client: QuartClient, mocker: MockerFixture, fake_db: Fak
                         "Name": user_data["Name"],
                         "Email": user_data["Email"],
                         "excelData": fake_db.get_user_history(user_id)
-                    })
+                    }, headers=api_key_header)
                     
                 else:
                     await client.post("/borrowed-items", json={
                         "RequestID": req_id,
                         "excelData": fake_db.get_all_borrowed()
-                    })
+                    }, headers=api_key_header)
             except Exception as e:
                 import traceback
                 traceback.print_exc()
