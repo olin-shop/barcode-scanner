@@ -19,10 +19,16 @@ from GUI.ReturnPage import ConfirmReturnPage
 @pytest.fixture
 def gui_app():
     """Provides a hidden App instance and handles clean teardown."""
-    app = App()
+    try:
+        app = App()
+    except Exception:
+        import time
+        time.sleep(0.1)
+        app = App()
     app.withdraw()
     yield app
     try:
+        app.update_idletasks()
         app.destroy()
     except Exception:
         pass

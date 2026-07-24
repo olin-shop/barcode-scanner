@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from typing import TYPE_CHECKING
 
 import customtkinter as ctk
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # =====================================================
-# PAGE 2: BORROWED ITEMS
+# PAGE 2: BORROWED ITEMS PAGE
 # =====================================================
 
 class BorrowedItemsPage(ctk.CTkFrame):
@@ -28,40 +29,128 @@ class BorrowedItemsPage(ctk.CTkFrame):
 
         self.configure(fg_color=const.BG_LIGHT_BLUE)
 
+        # Header banner canvas extending 80% across with a 70-degree forward-slash right edge
+        banner_height = 75
+        self.banner_canvas = ctk.CTkCanvas(
+            self,
+            bg=const.BG_LIGHT_BLUE,
+            highlightthickness=0,
+            bd=0
+        )
+        self.banner_canvas.place(x=0, y=0, relwidth=1.0, height=banner_height)
+
+        def _draw_banner(event=None) -> None:
+            self.banner_canvas.delete("all")
+            w = self.banner_canvas.winfo_width()
+            h = self.banner_canvas.winfo_height()
+            if w <= 1 or h <= 1:
+                return
+
+            # 1. Slanted banner polygon
+            top_right = w * 0.70
+            dx = h / math.tan(math.radians(70))
+            bot_right = top_right - dx
+            points = [0, 10, top_right, 10, bot_right, h, 0, h]
+            self.banner_canvas.create_polygon(points, fill=const.OLIN_BLUE_HOVER, outline="")
+
+            # 2. Line of small OLIN_PINK squares drawn directly on canvas (seamless across backgrounds)
+            sq_size = 8
+            spacing = 8
+            y0 = 20
+            start_x = w * 0.98
+            for i in range(20):
+                x1 = start_x - (i * (sq_size + spacing)) - sq_size - 50
+                y1 = y0
+                x2 = x1 + sq_size
+                y2 = y1 + sq_size
+                self.banner_canvas.create_rectangle(x1, y1, x2, y2, fill=const.OLIN_PINK, outline="")
+
+        self.banner_canvas.bind("<Configure>", _draw_banner)
+
+        # Header title text rendered over the banner in crisp white
         ctk.CTkLabel(
             self,
             text="Current Borrowed Items",
-            font=const.FONT_TITLE,
-            text_color=const.DARK_BLUE_TEXT
-        ).pack(pady=20)
+            font=(const.FONT_FAMILY, 30, "bold"),
+            text_color=const.BG_LIGHT_BLUE,
+            fg_color=const.OLIN_BLUE_HOVER
+        ).place(x=30, y=banner_height / 2, anchor="w")
 
+        # Large User Name label positioned in the extra space below the top banner
+        self.user_name_label = ctk.CTkLabel(
+            self,
+            text="",
+            font=(const.FONT_FAMILY, 32, "bold"),
+            text_color=const.DARK_BLUE_TEXT,
+            anchor="center"
+        )
+        self.user_name_label.pack(pady=(85, 5), padx=25, anchor="center")
+
+        # Shortened items list frame moved lower down
         self.scroll_frame = ctk.CTkScrollableFrame(
             self,
             width=400,
-            height=300,
+            height=160,
             fg_color=const.BG_WHITE,
             border_color=const.BORDER_BLUE,
             border_width=2,
             corner_radius=16
         )
-        self.scroll_frame.pack(pady=10, padx=20, fill="both", expand=True)
+        self.scroll_frame.pack(pady=(5, 10), padx=20, fill="both", expand=True)
+
+        # Hide visual scrollbar bar and rebalance grid padding so content is perfectly centered
+        try:
+            self.scroll_frame._scrollbar.grid_forget()
+            self.scroll_frame._scrollbar.configure(width=0)
+            self.scroll_frame._parent_canvas.grid_configure(padx=10)
+        except Exception:
+            pass
+
+        # Touchscreen swipe / drag scrolling support
+        self._swipe_last_y = 0
+
+        def _on_swipe_start(e):
+            self._swipe_last_y = e.y_root
+
+        def _on_swipe_drag(e):
+            dy = self._swipe_last_y - e.y_root
+            self._swipe_last_y = e.y_root
+            if abs(dy) > 0:
+                step = 1 if dy > 0 else -1
+                self.scroll_frame._parent_canvas.yview_scroll(step, "units")
+
+        try:
+            canvas = self.scroll_frame._parent_canvas
+            canvas.bind("<ButtonPress-1>", _on_swipe_start, add="+")
+            canvas.bind("<B1-Motion>", _on_swipe_drag, add="+")
+        except Exception:
+            pass
 
         ctk.CTkLabel(
             self,
             text="Scan an item to borrow or return",
             font=const.FONT_SUBTITLE,
-            text_color=const.MUTED_BLUE_TEXT
-        ).pack(side="bottom", pady=20)
+            text_color=const.OLIN_PINK
+        ).pack(side="bottom", pady=(5, 30))
 
         # Internal state: maps item_name -> item_barcode for the current session
         self._item_barcodes: dict[str, str] = {}
 
-    def load(self, items: list[BorrowedItem]) -> None:
+    def load(self, items: list[BorrowedItem], user_name: str | None = None) -> None:
         """
-        Populate the list from a fresh list of borrowed items.
+        Populate the list from a fresh list of borrowed items and update user display name.
         Call this every time the page is about to be shown.
         """
         self._item_barcodes = {item.name: item.barcode for item in items}
+
+        if not user_name:
+            session = getattr(self.master, "session", None)
+            if session and getattr(session, "current_user_name", None):
+                user_name = session.current_user_name
+
+        display_name = user_name if user_name else ""
+        self.user_name_label.configure(text=display_name)
+
         self._render(items)
 
     def remove_item(self, item_name: str) -> None:
@@ -72,28 +161,37 @@ class BorrowedItemsPage(ctk.CTkFrame):
         """
         self._item_barcodes.pop(item_name, None)
         master: App = self.master
-        self._render(master.session.user_items)
+        session = getattr(master, "session", None)
+        items = session.user_items if session else []
+        user_name = session.current_user_name if session else None
+        self.load(items, user_name=user_name)
 
     def _render(self, items: list[BorrowedItem]) -> None:
         for widget in self.scroll_frame.winfo_children():
             widget.destroy()
 
-        for item in items:
+        for idx, item in enumerate(items):
             date_str = item.borrowed_at.strftime("%b %d, %Y  %H:%M")
+            bg_color = const.BG_WHITE if idx % 2 == 0 else const.BG_LIGHT_BLUE
 
-            row = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
-            row.pack(fill="x", pady=4, padx=10)
+            row = ctk.CTkFrame(
+                self.scroll_frame,
+                fg_color=bg_color,
+                corner_radius=8
+            )
+            row.pack(fill="x", pady=3, padx=5)
 
             ctk.CTkButton(
                 row,
-                text=f"• {item.name}",
+                text=item.name,
                 font=const.FONT_ITEM_ROW,
                 anchor="w",
                 fg_color="transparent",
                 text_color=const.DARK_BLUE_TEXT,
                 hover_color=const.OLIN_LIGHT_BLUE_HOVER,
+                height=38,
                 command=lambda n=item.name, bc=item.barcode: self._show_missing_popup(n, bc)
-            ).pack(side="left", fill="x", expand=True)
+            ).pack(side="left", fill="x", expand=True, padx=(10, 0))
 
             ctk.CTkLabel(
                 row,
@@ -101,54 +199,90 @@ class BorrowedItemsPage(ctk.CTkFrame):
                 font=const.FONT_DATE,
                 text_color=const.MUTED_BLUE_TEXT,
                 anchor="e"
-            ).pack(side="right", padx=(10, 0))
+            ).pack(side="right", padx=(10, 15))
 
     def _show_missing_popup(self, item_name: str, item_barcode: str) -> None:
-        master: App = self.master
+        master = self.winfo_toplevel()
+        master.update_idletasks()
+
         popup = ctk.CTkToplevel(self)
         popup.title("Mark as Missing")
         popup.overrideredirect(True)
-        popup.update_idletasks()
-        x = master.winfo_x() + (master.winfo_width()  // 2) - 150
-        y = master.winfo_y() + (master.winfo_height() // 2) - 65
-        popup.geometry(f"300x130+{x}+{y}")
+        popup.attributes("-topmost", True)
+        popup.configure(fg_color=const.BG_LIGHT_BLUE)
+
+        # Center over master window
+        width, height = 340, 160
+        x = master.winfo_x() + (master.winfo_width() // 2) - (width // 2)
+        y = master.winfo_y() + (master.winfo_height() // 2) - (height // 2)
+        popup.geometry(f"{width}x{height}+{x}+{y}")
         popup.grab_set()
 
-        ctk.CTkLabel(
+        # Slight soft shadow wrapper frame
+        shadow_frame = ctk.CTkFrame(
             popup,
+            corner_radius=22,
+            fg_color="#C0DCF0",
+            border_width=0
+        )
+        shadow_frame.pack(fill="both", expand=True, padx=2, pady=2)
+
+        # Main light blue card container with rounded corners
+        card = ctk.CTkFrame(
+            shadow_frame,
+            corner_radius=20,
+            border_width=2,
+            border_color=const.BORDER_BLUE,
+            fg_color=const.BG_WHITE
+        )
+        card.pack(fill="both", expand=True, padx=2, pady=2)
+
+        ctk.CTkLabel(
+            card,
             text=f"Mark '{item_name}' as missing?",
             font=const.FONT_POPUP,
-            wraplength=260
-        ).pack(pady=20)
+            text_color=const.DARK_BLUE_TEXT,
+            wraplength=300,
+            justify="center"
+        ).pack(pady=(20, 10), padx=15)
 
-        btn_frame = ctk.CTkFrame(popup, fg_color="transparent")
-        btn_frame.pack()
+        btn_frame = ctk.CTkFrame(card, fg_color="transparent")
+        btn_frame.pack(pady=(5, 15))
 
         ctk.CTkButton(
             btn_frame,
             text="Mark Missing",
-            fg_color=const.MISSING_RED,
+            font=(const.FONT_FAMILY, 18, "bold"),
+            fg_color=const.OLIN_PINK,
             hover_color=const.MISSING_RED_HOVER,
+            corner_radius=12,
+            height=40,
             command=lambda: self._confirm_missing(item_name, item_barcode, popup)
         ).pack(side="left", padx=10)
 
         ctk.CTkButton(
             btn_frame,
             text="Cancel",
+            font=(const.FONT_FAMILY, 18, "bold"),
+            fg_color=const.OLIN_BLUE,
+            hover_color=const.OLIN_BLUE_HOVER,
+            text_color=const.BG_WHITE,
+            corner_radius=12,
+            height=40,
             command=popup.destroy
         ).pack(side="right", padx=10)
 
     def _confirm_missing(self, item_name: str, item_barcode: str, popup) -> None:
-        master: App = self.master
+        app = self.winfo_toplevel()
         popup.destroy()
-        master.show_frame("LoadingPage")
-        master.run_async(
-            master.session.mark_missing(item_barcode, item_name),
+        app.show_frame("LoadingPage")
+        app.run_async(
+            app.session.mark_missing(item_barcode, item_name),
             lambda success: self._on_missing_confirmed(success, item_name, item_barcode),
         )
 
     def _on_missing_confirmed(self, success: bool, item_name: str, item_barcode: str) -> None:
-        master: App = self.master
+        app = self.winfo_toplevel()
         if success:
             self.remove_item(item_name)
         else:
@@ -157,6 +291,6 @@ class BorrowedItemsPage(ctk.CTkFrame):
             )
             # popup
             show_popup(f"Warning: Could not mark '{item_name}' as missing.", self)
-            self._render(master.session.user_items)
+            self._render(app.session.user_items)
         # Stay on BorrowedItemsPage - reset the session timer
-        master.show_frame("BorrowedItemsPage")
+        app.show_frame("BorrowedItemsPage")

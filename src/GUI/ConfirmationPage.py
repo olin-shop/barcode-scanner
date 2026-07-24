@@ -2,6 +2,8 @@ import customtkinter as ctk
 
 from GUI import gui_constants as const
 
+from PIL import Image
+
 # =====================================================
 # PAGE 5: FINAL CONFIRMATION
 # =====================================================
@@ -24,6 +26,16 @@ class FinalConfirmationPage(ctk.CTkFrame):
             fg_color=const.BG_WHITE
         )
         card.place(relx=0.5, rely=0.5, relwidth=0.88, relheight=0.82, anchor="center")
+
+        # Top-left Olin Shop Logo
+        try:
+            logo_path = const.STATIC_DIR / "Olin_Shop_Logo.png"
+            if logo_path.exists():
+                logo_img = Image.open(logo_path)
+                self.logo_image = ctk.CTkImage(light_image=logo_img, dark_image=logo_img, size=(160, 60))
+                ctk.CTkLabel(card, image=self.logo_image, text="").place(relx=0.045, rely=0.05, anchor="nw")
+        except Exception:
+            pass
 
         ctk.CTkLabel(
             card,

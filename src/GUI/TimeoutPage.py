@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from PIL import Image
 
 from GUI import gui_constants as const
 
@@ -38,3 +39,13 @@ class SessionTimeoutPage(ctk.CTkFrame):
             font=const.FONT_TIMEOUT_SUBTITLE,
             text_color=const.MUTED_BLUE_TEXT
         ).place(relx=0.5, rely=0.62, anchor="center")
+
+        # Top-left Olin Shop Logo
+        try:
+            logo_path = const.STATIC_DIR / "Olin_Shop_Logo.png"
+            if logo_path.exists():
+                logo_img = Image.open(logo_path)
+                self.logo_image = ctk.CTkImage(light_image=logo_img, dark_image=logo_img, size=(160, 60))
+                ctk.CTkLabel(card, image=self.logo_image, text="").place(relx=0.045, rely=0.05, anchor="nw")
+        except Exception:
+            pass

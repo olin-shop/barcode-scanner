@@ -20,10 +20,15 @@ BG_LIGHT_BLUE: str = "#F0F7FC"
 SURFACE_CARD: str = "#FAFDFF"
 BORDER_BLUE: str = "#BCE3F7"
 
+GREEN_BLUE: str = "#26AAA5"
+GREEN_BLUE_HOVER: str = "#00677E"
+
 OLIN_BLUE: str = "#009BDF"            # Olin Cerulean / Light Blue Accent
 OLIN_BLUE_HOVER: str = "#0045BC"
 OLIN_LIGHT_BLUE: str = "#68C1D3"
 OLIN_LIGHT_BLUE_HOVER: str = "#D4ECF9"
+
+OLIN_PINK: str = "#ED037C"
 
 DARK_BLUE_TEXT: str = "#0F2537"       # Primary text color
 MUTED_BLUE_TEXT: str = "#4A6572"      # Subtitles & dates
@@ -34,11 +39,11 @@ LIGHT_BLUE: str = "#EBF6FC"           # Soft Light Blue
 CONFIRM_BLUE: str = "#009DD1"         # Olin Blue confirm action
 CONFIRM_BLUE_HOVER: str = "#0086B3"
 
-CANCEL_RED: str = "#D9383A"
-CANCEL_RED_HOVER: str = "#B82A2C"
+CANCEL_RED: str = "#E31D3C"
+CANCEL_RED_HOVER: str = "#750324"
 
-MISSING_RED: str = "#D9383A"
-MISSING_RED_HOVER: str = "#B82A2C"
+MISSING_RED: str = "#E31D3C"
+MISSING_RED_HOVER: str = "#750324"
 
 TIMEOUT_BG: str = "#F0F7FC"
 TIMEOUT_TEXT: str = "#0F2537"
@@ -50,11 +55,11 @@ TIMEOUT_SUBTEXT: str = "#4A6572"
 FONT_FAMILY: str = "DIN OT"
 
 FONT_TITLE = (FONT_FAMILY, 32, "bold")
-FONT_HEADING = (FONT_FAMILY, 36, "bold")
+FONT_HEADING = (FONT_FAMILY, 38, "bold")
 FONT_HUGE = (FONT_FAMILY, 88, "bold")
 FONT_CONFIRM_HUGE = (FONT_FAMILY, 80, "bold")
 FONT_BODY = (FONT_FAMILY, 28, "bold")
-FONT_SUBTITLE = (FONT_FAMILY, 18, "bold")
+FONT_SUBTITLE = (FONT_FAMILY, 25, "bold")
 FONT_BUTTON = (FONT_FAMILY, 30, "bold")
 FONT_ITEM_ROW = (FONT_FAMILY, 22, "bold")
 FONT_DATE = (FONT_FAMILY, 15, "bold")

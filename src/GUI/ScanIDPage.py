@@ -29,72 +29,124 @@ class ScanIDPage(ctk.CTkFrame):
 
         # Loaded via a path built from this file's location, so the app
         # doesn't care what directory it was launched from.
-        self._corner_images: list[ctk.CTkImage] = []
         try:
-            image_path = const.STATIC_DIR / "green_corner.png"
+            image_path = const.STATIC_DIR / "olin_blue_corner.png"
             img = Image.open(image_path)
             self.corner_tl = ctk.CTkImage(light_image=img,                          dark_image=img,                          size=(90, 90))
             self.corner_tr = ctk.CTkImage(light_image=img.rotate(270, expand=True), dark_image=img.rotate(270, expand=True), size=(90, 90))
             self.corner_bl = ctk.CTkImage(light_image=img.rotate(90,  expand=True), dark_image=img.rotate(90,  expand=True), size=(90, 90))
             self.corner_br = ctk.CTkImage(light_image=img.rotate(180, expand=True), dark_image=img.rotate(180, expand=True), size=(90, 90))
 
-            self._corner_images = [self.corner_tl, self.corner_tr, self.corner_bl, self.corner_br]
+            self.lbl_corner_tl = ctk.CTkLabel(card, image=self.corner_tl, text="")
+            self.lbl_corner_tr = ctk.CTkLabel(card, image=self.corner_tr, text="")
+            self.lbl_corner_bl = ctk.CTkLabel(card, image=self.corner_bl, text="")
+            self.lbl_corner_br = ctk.CTkLabel(card, image=self.corner_br, text="")
 
-            ctk.CTkLabel(card, image=self.corner_tl, text="").place(relx=.15, rely=.2, anchor="center")
-            ctk.CTkLabel(card, image=self.corner_tr, text="").place(relx=.85, rely=.2, anchor="center")
-            ctk.CTkLabel(card, image=self.corner_bl, text="").place(relx=.15, rely=.8, anchor="center")
-            ctk.CTkLabel(card, image=self.corner_br, text="").place(relx=.85, rely=.8, anchor="center")
+            self.lbl_corner_tl.place(relx=.15, rely=.2, anchor="center")
+            self.lbl_corner_tr.place(relx=.85, rely=.2, anchor="center")
+            self.lbl_corner_bl.place(relx=.15, rely=.8, anchor="center")
+            self.lbl_corner_br.place(relx=.85, rely=.8, anchor="center")
         except Exception:
-            pass
+            self.lbl_corner_tl = None
+            self.lbl_corner_tr = None
+            self.lbl_corner_bl = None
+            self.lbl_corner_br = None
 
-        ctk.CTkLabel(
+        # SCAN ID Header centered
+        self.scan_id_label = ctk.CTkLabel(
             card,
             text="SCAN ID",
             font=const.FONT_HUGE,
             text_color=const.OLIN_BLUE
-        ).place(relx=0.5, rely=0.5, anchor="center")
+        )
+        self.scan_id_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Pulsing visual animation state
-        self._base_size: int = 85
-        self._max_size: int = 98
-        self._current_size: float = float(self._base_size)
-        self._pulse_direction: int = 1  # +1 for growing, -1 for shrinking
-        self._is_paused: bool = False
-        
-        if self._corner_images:
-            self._animate_pulse()
+        # Animated square dots outside the central card in OLIN_PINK
+        # Top-left corner: grows left to right
+        self.tl_dots_frame = ctk.CTkFrame(self, fg_color=const.BG_WHITE)
+        self.tl_dots_frame.place(relx=0.255, rely=0.165, anchor="nw")#(relx=0.055, rely=0.03, anchor="nw")
+        self.tl_dots = [
+            ctk.CTkFrame(self.tl_dots_frame, width=14, height=14, fg_color=const.OLIN_PINK, corner_radius=0)
+            for _ in range(5)
+        ]
 
-    def _animate_pulse(self) -> None:
+        # Bottom-right corner: grows right to left
+        self.br_dots_frame = ctk.CTkFrame(self, fg_color=const.BG_WHITE)
+        self.br_dots_frame.place(relx=0.745, rely=0.84, anchor="se")#(relx=0.945, rely=0.97, anchor="se")
+        self.br_dots = [
+            ctk.CTkFrame(self.br_dots_frame, width=14, height=14, fg_color=const.OLIN_PINK, corner_radius=0)
+            for _ in range(5)
+        ]
+
+        self._dots_count = 0
+        self._dots_direction = 1
+        self._is_confirming = False
+        self._animate_dots()
+
+    def trigger_confirm_animation(self, on_complete: callable = None) -> None:
         """
-        Animates the corner images by pulsing them smoothly (growing, shrinking, pausing, repeating).
+        Erase pink dots and animate four corners moving in and out like a confirmation click.
+        Executes on_complete callback when finished.
         """
+        if self._is_confirming:
+            return
+        self._is_confirming = True
+
+        # Erase pink dots
         try:
-            if not self.winfo_exists():
-                return
-
-            if self._is_paused:
-                self._is_paused = False
-                self.after(500, self._animate_pulse)  # Pause at base size for 500ms
-                return
-
-            step = 0.8
-            self._current_size += self._pulse_direction * step
-
-            if self._current_size >= self._max_size:
-                self._current_size = float(self._max_size)
-                self._pulse_direction = -1
-            elif self._current_size <= self._base_size:
-                self._current_size = float(self._base_size)
-                self._pulse_direction = 1
-                self._is_paused = True  # Pause after completing full pulse cycle
-
-            sz = int(self._current_size)
-            for img in self._corner_images:
-                img.configure(size=(sz, sz))
-
-            # Schedule next frame in 30ms for 30+ FPS smooth animation
-            delay = 500 if self._is_paused else 30
-            self.after(delay, self._animate_pulse)
+            self.tl_dots_frame.place_forget()
+            self.br_dots_frame.place_forget()
         except Exception:
             pass
 
+        offsets = [0.0, 0.015, 0.03, 0.032, 0.035, 0.035, 0.032, 0.03, 0.015, 0.0]
+
+        def _step(idx: int) -> None:
+            if not self.winfo_exists():
+                return
+
+            if idx < len(offsets):
+                d = offsets[idx]
+                if self.lbl_corner_tl:
+                    self.lbl_corner_tl.place(relx=0.15 + d, rely=0.20 + d, anchor="center")
+                    self.lbl_corner_tr.place(relx=0.85 - d, rely=0.20 + d, anchor="center")
+                    self.lbl_corner_bl.place(relx=0.15 + d, rely=0.80 - d, anchor="center")
+                    self.lbl_corner_br.place(relx=0.85 - d, rely=0.80 - d, anchor="center")
+
+                # Change SCAN ID text color when corners move in all the way
+                if d >= 0.03:
+                    self.scan_id_label.configure(text_color=const.OLIN_BLUE_HOVER)
+                else:
+                    self.scan_id_label.configure(text_color=const.OLIN_BLUE)
+
+                self.after(25, lambda: _step(idx + 1))
+            else:
+                self._is_confirming = False
+                if on_complete and callable(on_complete):
+                    on_complete()
+
+        _step(0)
+
+    def _animate_dots(self) -> None:
+        """Animate square dots loading in/out in OLIN_PINK (0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 4 -> 3 -> 2 -> 1 -> 0)."""
+        if not self.winfo_exists() or self._is_confirming:
+            return
+
+        try:
+            for i in range(5):
+                if i < self._dots_count:
+                    self.tl_dots[i].pack(side="left", padx=3)
+                    self.br_dots[i].pack(side="right", padx=3)
+                else:
+                    self.tl_dots[i].pack_forget()
+                    self.br_dots[i].pack_forget()
+
+            if self._dots_count == 5:
+                self._dots_direction = -1
+            elif self._dots_count == 0:
+                self._dots_direction = 1
+
+            self._dots_count += self._dots_direction
+            self.after(800, self._animate_dots)
+        except Exception:
+            pass
