@@ -13,6 +13,12 @@ from backend.backend_types import Status
 import Email.email_service as es
 
 
+@pytest.fixture(autouse=True)
+def mock_rotate_keys(mocker: MockerFixture) -> None:
+    """Prevents tests from mutating the real .env file."""
+    mocker.patch("Email.email_service.rotate_api_keys")
+
+
 @pytest.mark.asyncio
 async def test_start_email_scheduler(mocker: MockerFixture) -> None:
     """Verifies that start_email_scheduler starts the scheduler and adds the daily job."""
