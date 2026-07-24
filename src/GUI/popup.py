@@ -34,6 +34,7 @@ def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ct
     popup = ctk.CTkToplevel(master)
     popup.overrideredirect(True)
     popup.attributes("-topmost", True)
+    popup.configure(fg_color=const.BG_WHITE)
     popup.grab_set()
 
     # Outer container frame for rounded corners and border styling
@@ -44,7 +45,7 @@ def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ct
         border_color=const.BORDER_BLUE,
         fg_color=const.BG_WHITE
     )
-    container.pack(fill="both", expand=True, padx=2, pady=2)
+    container.pack(fill="both", expand=True)
 
     # Message text label
     label = ctk.CTkLabel(

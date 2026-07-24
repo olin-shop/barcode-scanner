@@ -1,54 +1,45 @@
-"""
-Application shell: window setup, page registry, navigation, session-timeout
-handling, and barcode-scan routing.
-
-Backend communication and session state used to live here as module-level
-globals and standalone backend_* functions. They now live in
-GUI.session_manager.SessionManager, which is injected into the App rather
-than reached for as a global — see GUI/session_manager.py.
-"""
-
 import asyncio
 import logging
+import queue
 import threading
 from typing import Any, Callable, Coroutine
 
 import customtkinter as ctk
 
 from GUI import gui_constants as const
-from GUI.popup import show_popup
 from GUI.session_manager import SessionManager
 from GUI.ScanIDPage import ScanIDPage
-from GUI.LoadingPage import LoadingPage
-from GUI.TimeoutPage import SessionTimeoutPage
-from GUI.ReturnPage import ConfirmReturnPage
-from GUI.BorrowPage import ConfirmBorrowPage
 from GUI.BorrowedItemsPage import BorrowedItemsPage
+from GUI.BorrowPage import ConfirmBorrowPage
+from GUI.ReturnPage import ConfirmReturnPage
 from GUI.ConfirmationPage import FinalConfirmationPage
+from GUI.TimeoutPage import SessionTimeoutPage
+from GUI.LoadingPage import LoadingPage
+from GUI.popup import show_popup
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 
 class App(ctk.CTk):
+    """
+    Main application shell for the Olin Shop Barcode Scanner kiosk.
+    Manages frame navigation, session timers, barcode HID inputs, and async background requests.
+    """
 
-    def __init__(self, session: SessionManager | None = None):
+    def __init__(self) -> None:
         super().__init__()
 
+        # Appearance & Geometry
         ctk.set_appearance_mode("light")
         self.geometry(const.WINDOW_SIZE)
-        self.title(const.WINDOW_TITLE)
+        self.title("Olin Shop Barcode Scanner")
         self.configure(fg_color=const.BG_LIGHT_BLUE)
-        # self.attributes("-fullscreen", True)   # Uncomment on Raspberry Pi
 
-        # Session state + backend access is injected, not global, so it can
-        # be swapped out (e.g. with a mock) in tests.
-        self.session: SessionManager = session or SessionManager()
+        # Global Session State
+        self.session = SessionManager()
 
         self._timeout_job = None   # after() handle for the session timer
+        self._slide_job = None     # after() handle for slide transitions
 
         # Build pages
         self.frames = {}
@@ -66,20 +57,21 @@ class App(ctk.CTk):
             frame.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         self.current_page_name: str = "ScanIDPage"
-        self.show_frame("ScanIDPage")
 
-        # Wire up the simulated barcode entry (keyboard)
-        # On a real scanner, replace this with whatever serial/HID input method
-        # your scanner uses (e.g. read lines from /dev/ttyUSB0).
+        # Wire up simulated barcode HID scanner entry
         self._barcode_buffer = ""
         self.bind("<Key>", self._on_key)
-        import queue
+
+        # Thread-safe queue for async background callbacks
         self._async_queue: queue.Queue = queue.Queue()
         self._poll_async_queue()
 
-        # Async loop
+        # Background asyncio loop
         self.loop = asyncio.new_event_loop()
         threading.Thread(target=self.loop.run_forever, daemon=True).start()
+
+        # Show initial page
+        self.show_frame("ScanIDPage")
 
     def _poll_async_queue(self) -> None:
         """Polls for callbacks queued by background async threads."""
@@ -96,12 +88,51 @@ class App(ctk.CTk):
     # Navigation
 
     def show_frame(self, page_name: str) -> None:
-        """Raise a page with smooth movement and manage the session timeout timer."""
+        """Raise a page with a smooth slide-in transition and manage the session timeout timer."""
+        if self._slide_job is not None:
+            try:
+                self.after_cancel(self._slide_job)
+            except Exception:
+                pass
+            self._slide_job = None
+
         self.current_page_name = page_name
         target_frame = self.frames[page_name]
+
+        # Ensure all non-target frames remain in full position
+        for name, frame in self.frames.items():
+            if name != page_name:
+                try:
+                    frame.place(relx=0, rely=0, relwidth=1, relheight=1)
+                except Exception:
+                    pass
+
         target_frame.tkraise()
-        # Smooth movement effect: subtle quick layout update & idle refresh
+
+        # Smooth High-FPS Slide-In transition curve (ease-out push over ~240ms at ~125 FPS)
+        steps = 0
+        step_idx = 0
+
+        def _animate_slide():
+            nonlocal step_idx
+            if not self.winfo_exists():
+                return
+            step_idx += 1
+            if step_idx <= steps:
+                progress = step_idx / steps
+                ease_out = 1.0 - (1.0 - progress) ** 2.5
+                rel_x = 1.0 - ease_out
+
+                if target_frame.winfo_exists():
+                    target_frame.place(relx=rel_x, rely=0, relwidth=1, relheight=1)
+                    self._slide_job = self.after(8, _animate_slide)
+            else:
+                target_frame.place(relx=0, rely=0, relwidth=1, relheight=1)
+                self._slide_job = None
+
+        target_frame.place(relx=1.0, rely=0, relwidth=1, relheight=1)
         self.update_idletasks()
+        _animate_slide()
         self._reset_timeout_timer(page_name)
 
     def _reset_timeout_timer(self, page_name: str) -> None:
@@ -148,7 +179,6 @@ class App(ctk.CTk):
         """
         Accumulates keypresses into a barcode buffer.
         Most USB HID barcode scanners end their transmission with <Return>.
-        Adjust the terminator if your scanner behaves differently.
         """
         if event.keysym == "Return":
             barcode = self._barcode_buffer.strip()
@@ -166,7 +196,6 @@ class App(ctk.CTk):
             self._handle_id_scan(barcode)
         elif current == "BorrowedItemsPage":
             self._handle_item_scan(barcode)
-        # Scans on confirmation / timeout pages are intentionally ignored.
 
     def _current_page_name(self) -> str | None:
         """Return the name of whichever page is currently raised."""
@@ -181,13 +210,6 @@ class App(ctk.CTk):
         return None
 
     # Scan handlers
-    #
-    # SessionManager's backend hooks are real network calls (see
-    # GUI/session_manager.py), so they're async. LoadingPage is shown while
-    # each call is in flight, and run_async's callback resumes on the main
-    # thread once it resolves. If the session has already moved on by the
-    # time a callback fires (e.g. the user timed out mid-lookup), the
-    # "still on LoadingPage" check makes the stale response a no-op.
 
     def _handle_id_scan(self, user_barcode: str) -> None:
         logger.info("Scanned user id: %s", user_barcode)
@@ -200,7 +222,7 @@ class App(ctk.CTk):
         if self._current_page_name() in ("SessionTimeoutPage", "FinalConfirmationPage"):
             logger.info("Ignoring stale user-items response; session moved on.")
             return
-        self.frames["BorrowedItemsPage"].load(items)
+        self.frames["BorrowedItemsPage"].load(items, user_name=self.session.current_user_name)
         self.show_frame("BorrowedItemsPage")
 
     def _handle_item_scan(self, item_barcode: str) -> None:
@@ -241,10 +263,10 @@ class App(ctk.CTk):
         self,
         coro: Coroutine[Any, Any, Any],
         callback: Callable[[Any], None],
-        threshold_ms: int = 150,
+        threshold_ms: int = 1000,
     ) -> None:
         """
-        Submits a coroutine. Shows 'LoadingPage' only if execution takes longer than threshold_ms.
+        Submits a coroutine. Shows 'LoadingPage' only if execution takes longer than threshold_ms (1s).
         Prevents screen flickering for fast/cached operations.
         """
         loading_job = self.after(threshold_ms, lambda: self.show_frame("LoadingPage"))

@@ -17,7 +17,7 @@ from GUI.BorrowedItemsPage import BorrowedItemsPage
 from GUI.session_manager import SessionManager
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def gui_app():
     """Provides a hidden App instance and handles clean teardown."""
     app = App()
@@ -84,18 +84,20 @@ def test_stale_callback_discarding_on_timeout(gui_app: App) -> None:
     assert gui_app._current_page_name() == "SessionTimeoutPage"
 
 
+from GUI.LoadingPage import LoadingPage
+
 @requires_gui
 def test_animation_safety_on_widget_destruction(gui_app: App) -> None:
-    """Edge case: _animate_pulse fires on destroyed ScanIDPage widget without raising TclError."""
-    page = ScanIDPage(gui_app)
+    """Edge case: _animate fires on destroyed LoadingPage widget without raising TclError."""
+    page = LoadingPage(gui_app)
     # Destroy page widget immediately while animation loop is pending
     page.destroy()
 
     # Trigger animation method explicitly post-destruction
     try:
-        page._animate_pulse()
+        page._animate()
     except Exception as err:
-        pytest.fail(f"_animate_pulse raised an unexpected exception on destroyed widget: {err}")
+        pytest.fail(f"_animate raised an unexpected exception on destroyed widget: {err}")
 
 
 @requires_gui

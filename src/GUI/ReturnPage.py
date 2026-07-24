@@ -4,6 +4,7 @@ import logging
 from typing import TYPE_CHECKING
 
 import customtkinter as ctk
+from PIL import Image
 
 from GUI import gui_constants as const
 from GUI.popup import show_popup
@@ -41,13 +42,23 @@ class ConfirmReturnPage(ctk.CTkFrame):
             text="Return Item?",
             font=const.FONT_HEADING,
             text_color=const.DARK_BLUE_TEXT
-        ).pack(pady=(35, 15))
+        ).pack(pady=(60, 15))
 
         self.item_label = ctk.CTkLabel(card, text="", font=const.FONT_BODY, text_color=const.OLIN_BLUE)
         self.item_label.pack(pady=15)
 
         button_frame = ctk.CTkFrame(card, fg_color="transparent")
-        button_frame.pack(pady=35)
+        button_frame.pack(pady=(25, 20))
+
+        # Top-left Olin Shop Logo
+        try:
+            logo_path = const.STATIC_DIR / "Olin_Shop_Logo.png"
+            if logo_path.exists():
+                logo_img = Image.open(logo_path)
+                self.logo_image = ctk.CTkImage(light_image=logo_img, dark_image=logo_img, size=(160, 60))
+                ctk.CTkLabel(card, image=self.logo_image, text="").place(relx=0.045, rely=0.05, anchor="nw")
+        except Exception:
+            pass
 
         ctk.CTkButton(
             button_frame,
@@ -55,21 +66,21 @@ class ConfirmReturnPage(ctk.CTkFrame):
             hover_color=const.CONFIRM_BLUE_HOVER,
             text="Confirm",
             font=const.FONT_BUTTON,
-            width=180,
-            height=60,
-            corner_radius=12,
+            width=210,
+            height=70,
+            corner_radius=14,
             command=self._on_confirm
         ).pack(side="left", padx=20)
 
         ctk.CTkButton(
             button_frame,
-            fg_color=const.CANCEL_RED,
+            fg_color=const.OLIN_PINK,
             hover_color=const.CANCEL_RED_HOVER,
             text="Cancel",
             font=const.FONT_BUTTON,
-            width=180,
-            height=60,
-            corner_radius=12,
+            width=210,
+            height=70,
+            corner_radius=14,
             command=self._on_cancel
         ).pack(side="left", padx=20)
 
@@ -83,20 +94,20 @@ class ConfirmReturnPage(ctk.CTkFrame):
         self.item_label.configure(text=item_name)
 
     def _on_confirm(self) -> None:
-        master: App = self.master
-        master.show_frame("LoadingPage")
-        master.run_async(
-            master.session.confirm_return(self._item_barcode, self._item_name),
+        app = self.winfo_toplevel()
+        app.show_frame("LoadingPage")
+        app.run_async(
+            app.session.confirm_return(self._item_barcode, self._item_name),
             self._on_return_confirmed,
         )
 
     def _on_return_confirmed(self, success: bool) -> None:
-        master: App = self.master
+        app = self.winfo_toplevel()
         if success:
             # session.confirm_return already dropped the item from session
             # state; this just refreshes the displayed list to match.
-            master.frames["BorrowedItemsPage"].remove_item(self._item_name)
-            master.start_final_confirmation()
+            app.frames["BorrowedItemsPage"].remove_item(self._item_name)
+            app.start_final_confirmation()
         else:
             logger.error(
                 "Return could not be confirmed for item=%s (%s); returning to item list.",
@@ -104,8 +115,9 @@ class ConfirmReturnPage(ctk.CTkFrame):
             )
             # popup
             show_popup(f"Warning: Could not confirm return for '{self._item_name}'.", self)
-            master.frames["BorrowedItemsPage"].load(master.session.user_items)
-            master.show_frame("BorrowedItemsPage")
+            app.frames["BorrowedItemsPage"].load(app.session.user_items)
+            app.show_frame("BorrowedItemsPage")
 
     def _on_cancel(self) -> None:
-        self.master.show_frame("BorrowedItemsPage")
+        app = self.winfo_toplevel()
+        app.show_frame("BorrowedItemsPage")
