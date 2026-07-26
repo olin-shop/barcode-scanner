@@ -25,6 +25,7 @@ from backend.backend_constants import (
 )
 from backend.backend_types import Status
 from backend.requests import get_item, request_borrowed_items
+from backend.api_security import rotate_api_keys
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +53,13 @@ def start_email_scheduler() -> AsyncIOScheduler:
 
 async def send_overdue_reminders() -> None:
     """
-    Fetches the current borrowed-items list and emails a reminder to
-    every borrower whose item is overdue.
+    Rotates the API keys, fetches the current borrowed-items list, and emails 
+    a reminder to every borrower whose item is overdue.
     """
     try:
+        logger.info("[REMINDER] Rotating API keys before requesting borrowed items.")
+        rotate_api_keys()
+        
         items = await request_borrowed_items()
     except Exception as e:
         logger.error("[REMINDER] Failed to fetch borrowed items: %s", e)

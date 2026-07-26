@@ -12,6 +12,12 @@ from backend.backend_types import Status
 import Email.email_service as es
 
 
+@pytest.fixture(autouse=True)
+def mock_rotate_keys(mocker: MockerFixture) -> None:
+    """Prevents tests from mutating the real .env file."""
+    mocker.patch("Email.email_service.rotate_api_keys")
+
+
 def test_send_batch_high_volume_stress(mocker: MockerFixture) -> None:
     """Stress test: verifies single SMTP connection context manager handles 500 records smoothly."""
     now = datetime.now() - timedelta(days=20)

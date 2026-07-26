@@ -6,15 +6,29 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from quart import Quart, request, Response, jsonify
+from quart import Quart, request, Response, jsonify, abort
 
 from backend.backend_types import Status
 from backend.backend_constants import from_excel_date, EMPTY_DATA
 from backend.app_state import pending_requests
+from backend.api_security import get_current_key
 
 logger = logging.getLogger(__name__)
 
 quart_app: Quart = Quart(__name__)
+
+
+@quart_app.before_request
+async def verify_api_key():
+    """
+    Validates the x-api-key header on all incoming webhook requests.
+    Aborts the request with 401 Unauthorized if the key is missing or invalid.
+    """
+    if request.method == "POST":
+        api_key = request.headers.get("x-api-key")
+        if not api_key or api_key != get_current_key():
+            logger.warning("Unauthorized webhook access attempt from %s. Invalid x-api-key.", request.remote_addr)
+            abort(401, description="Unauthorized")
 
 
 @quart_app.route("/checkout", methods=["POST"])

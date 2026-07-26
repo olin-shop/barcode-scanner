@@ -4,6 +4,7 @@ These tests verify real network connectivity against live Power Automate endpoin
 Requires a valid .env file to run successfully.
 """
 import pytest
+import pytest_asyncio
 import asyncio
 from datetime import datetime
 import os
@@ -16,7 +17,7 @@ from backend.backend_types import Status, UserInfoPayload
 from typing import AsyncGenerator
 
 # We use autouse so this runs before any tests in this module
-@pytest.fixture(scope="module", autouse=True)
+@pytest_asyncio.fixture(autouse=True)
 async def running_server() -> AsyncGenerator[None, None]:
     """Runs the Quart server in the background for live network tests."""
     server_task = asyncio.create_task(quart_app.run_task(host=HOST_IP, port=PORT))
@@ -39,14 +40,14 @@ async def test_live_get_name() -> None:
     """Verifies that the live get_name flow successfully queries Power Automate."""
     fake_barcode = "OL01509"
     res = await get_name(fake_barcode)
-    assert res is not None or res is None
+    assert res is not None, "get_name timed out waiting for Power Automate webhook"
 
 @pytest.mark.asyncio
 async def test_live_get_item() -> None:
     """Verifies that the live get_item flow successfully queries Power Automate."""
     fake_item_id = 11134
     res = await get_item(fake_item_id)
-    assert res is not None or res is None
+    assert res is not None, "get_item timed out waiting for Power Automate webhook"
 
 @pytest.mark.asyncio
 async def test_live_checkout() -> None:
@@ -61,10 +62,10 @@ async def test_live_checkout() -> None:
         "item_status": Status.BORROWED
     }
     success = await checkout(payload)
-    assert isinstance(success, bool)
+    assert success is True, "checkout timed out or failed in Power Automate"
 
 @pytest.mark.asyncio
 async def test_live_request_borrowed_items() -> None:
     """Verifies that the live borrowed items flow successfully queries Power Automate."""
     res = await request_borrowed_items()
-    assert res is not None or res is None
+    assert res is not None, "request_borrowed_items timed out waiting for Power Automate webhook"

@@ -16,14 +16,24 @@ TESTS_DIR = os.path.join(ROOT_DIR, "tests")
 for d in (SRC_DIR, ROOT_DIR, TESTS_DIR):
     if d not in sys.path:
         sys.path.insert(0, d)
+from dotenv import load_dotenv
+
+# Load real environment variables if .env exists
+load_dotenv()
 
 # Mock out environment variables so tests don't crash when running without a real .env
-os.environ["NAME_URL"] = "http://fake-url/names"
-os.environ["ITEM_URL"] = "http://fake-url/items"
-os.environ["CHECKOUT_URL"] = "http://fake-url/checkout"
-os.environ["BORROWED_ITEMS_URL"] = "http://fake-url/borrowed-items"
-os.environ["PORT"] = "5000"
-os.environ["HOST_IP"] = "127.0.0.1"
+if "NAME_URL" not in os.environ:
+    os.environ["NAME_URL"] = "http://fake-url/names"
+if "ITEM_URL" not in os.environ:
+    os.environ["ITEM_URL"] = "http://fake-url/items"
+if "CHECKOUT_URL" not in os.environ:
+    os.environ["CHECKOUT_URL"] = "http://fake-url/checkout"
+if "BORROWED_ITEMS_URL" not in os.environ:
+    os.environ["BORROWED_ITEMS_URL"] = "http://fake-url/borrowed-items"
+if "PORT" not in os.environ:
+    os.environ["PORT"] = "5000"
+if "HOST_IP" not in os.environ:
+    os.environ["HOST_IP"] = "127.0.0.1"
 
 from quart import Quart
 from quart.testing import QuartClient

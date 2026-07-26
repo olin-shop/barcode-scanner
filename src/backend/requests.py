@@ -22,6 +22,7 @@ from backend.app_state import pending_requests
 from backend.backend_types import Status, UserInfoPayload
 import uuid
 from typing import Optional
+from backend.api_security import get_current_key, get_old_key
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,8 @@ async def get_name(
     logger.info("Initiating get_name request for user_barcode=%s (RequestID=%s).", barcode, request_id)
 
     try:
-        res = await requests.post(NAME_URL, json=send_json, timeout=TIMEOUT)
+        headers = {"x-api-key": get_current_key()}
+        res = await requests.post(NAME_URL, json=send_json, headers=headers, timeout=TIMEOUT)
         if res.status_code not in (200, 202):
             raise ValueError(f"HTTP dispatch status {res.status_code}")
     except Exception as e:
@@ -109,7 +111,8 @@ async def get_item(barcode: int) -> Optional[tuple[str, Status]]:
     logger.info("Initiating get_item request for item_id=%d (RequestID=%s).", barcode, request_id)
 
     try:
-        res = await requests.post(ITEM_URL, json=send_json, timeout=TIMEOUT)
+        headers = {"x-api-key": get_current_key()}
+        res = await requests.post(ITEM_URL, json=send_json, headers=headers, timeout=TIMEOUT)
         if res.status_code not in (200, 202):
             raise ValueError(f"HTTP dispatch status {res.status_code}")
     except Exception as e:
@@ -197,7 +200,8 @@ async def checkout(user_info: UserInfoPayload) -> bool:
     )
 
     try:
-        res = await requests.post(CHECKOUT_URL, json=send_json, timeout=TIMEOUT)
+        headers = {"x-api-key": get_current_key()}
+        res = await requests.post(CHECKOUT_URL, json=send_json, headers=headers, timeout=TIMEOUT)
         if res.status_code not in (200, 202):
             raise ValueError(f"HTTP dispatch status {res.status_code}")
     except Exception as e:
@@ -241,7 +245,13 @@ async def request_borrowed_items() -> Optional[tuple[list[datetime], list[Status
     logger.info("Initiating request_borrowed_items (RequestID=%s).", request_id)
 
     try:
-        res = await requests.post(BORROWED_ITEMS_URL, json={"RequestID": request_id}, timeout=TIMEOUT)
+        headers = {
+            "x-api-key": get_current_key(),
+            "x-new-key": get_current_key(),
+            "x-old-key": get_old_key(),
+            "x-is-rotation": "true"
+        }
+        res = await requests.post(BORROWED_ITEMS_URL, json={"RequestID": request_id}, headers=headers, timeout=TIMEOUT)
         if res.status_code not in (200, 202):
             raise ValueError(f"HTTP dispatch status {res.status_code}")
     except Exception as e:

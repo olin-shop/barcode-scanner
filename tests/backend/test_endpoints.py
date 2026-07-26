@@ -7,6 +7,7 @@ import pytest
 import asyncio
 from backend.backend_types import Status
 from backend.app_state import pending_requests
+from backend.api_security import get_current_key
 from quart.testing import QuartClient
 
 @pytest.mark.asyncio
@@ -16,7 +17,8 @@ async def test_checkout_endpoint(client: QuartClient) -> None:
     future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
     
-    response = await client.post("/checkout", json={"RequestID": request_id, "Sent": "Received"})
+    headers = {"x-api-key": get_current_key()}
+    response = await client.post("/checkout", json={"RequestID": request_id, "Sent": "Received"}, headers=headers)
     assert response.status_code == 200
     
     assert future.result() is True
@@ -27,12 +29,12 @@ async def test_get_item_endpoint(client: QuartClient) -> None:
     request_id = "test-req-2"
     future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
-    
+    headers = {"x-api-key": get_current_key()}
     response = await client.post("/items", json={
         "RequestID": request_id, 
         "ItemName": "Drill", 
         "ItemStatus": "In Stock"
-    })
+    }, headers=headers)
     assert response.status_code == 200
     
     result = future.result()
@@ -44,8 +46,8 @@ async def test_get_name_endpoint(client: QuartClient) -> None:
     request_id = "test-req-3"
     future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
-    
     # 44000.0 is roughly June 2020 in Excel dates
+    headers = {"x-api-key": get_current_key()}
     response = await client.post("/names", json={
         "RequestID": request_id,
         "Name": "Alice",
@@ -53,7 +55,7 @@ async def test_get_name_endpoint(client: QuartClient) -> None:
         "excelData": [
             {"ItemID": "123", "ItemStatus": "Borrowed", "DateBorrowed": 44000.0}
         ]
-    })
+    }, headers=headers)
     assert response.status_code == 200
     
     name, email, dates, statuses, item_ids = future.result()
@@ -69,13 +71,13 @@ async def test_borrowed_items_endpoint(client: QuartClient) -> None:
     request_id = "test-req-4"
     future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
-    
+    headers = {"x-api-key": get_current_key()}
     response = await client.post("/borrowed-items", json={
         "RequestID": request_id,
         "excelData": [
             {"ItemID": "456", "ItemStatus": "Missing", "DateBorrowed": 45000.0}
         ]
-    })
+    }, headers=headers)
     assert response.status_code == 200
     
     dates, statuses, item_ids = future.result()
@@ -85,10 +87,11 @@ async def test_borrowed_items_endpoint(client: QuartClient) -> None:
 @pytest.mark.asyncio
 async def test_malformed_json_missing_request_id(client: QuartClient) -> None:
     """Ensure the endpoint doesn't crash if RequestID is missing."""
+    headers = {"x-api-key": get_current_key()}
     response = await client.post("/items", json={
         "ItemName": "Drill", 
         "ItemStatus": "In Stock"
-    })
+    }, headers=headers)
     assert response.status_code == 200
     # Since there's no RequestID, it shouldn't pop anything from pending_requests
     assert len(pending_requests) == 0
@@ -99,16 +102,28 @@ async def test_malformed_date_borrowed_items(client: QuartClient) -> None:
     request_id = "test-req-bad-date"
     future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
-    
+    headers = {"x-api-key": get_current_key()}
     response = await client.post("/borrowed-items", json={
         "RequestID": request_id,
         "excelData": [
             {"ItemID": "100", "ItemStatus": "Borrowed", "DateBorrowed": "GARBAGE_STRING"},
             {"ItemID": "101", "ItemStatus": "Borrowed", "DateBorrowed": 45000.0}
         ]
-    })
+    }, headers=headers)
     assert response.status_code == 200
     
     # The endpoint should set an exception on the future
     with pytest.raises(ValueError, match="Corrupted row data: could not convert string to float: 'GARBAGE_STRING'"):
         future.result()
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_access(client: QuartClient) -> None:
+    """Verifies that missing or invalid x-api-key headers result in a 401 Unauthorized."""
+    # Missing header
+    response = await client.post("/checkout", json={"RequestID": "test", "Sent": "Received"})
+    assert response.status_code == 401
+
+    # Invalid header
+    response = await client.post("/checkout", json={"RequestID": "test", "Sent": "Received"}, headers={"x-api-key": "HACKER"})
+    assert response.status_code == 401
