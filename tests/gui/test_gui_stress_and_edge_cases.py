@@ -72,6 +72,36 @@ def test_fast_async_response_loading_page_threshold(gui_app: App, mocker: Mocker
 
 
 @requires_gui
+def test_loading_page_minimum_display_duration_enforced(gui_app: App, mocker: MockerFixture) -> None:
+    """Feature test: When LoadingPage is shown, callback is held for min_display_ms to prevent awkward screen flicker."""
+    async def slow_coro():
+        await asyncio.sleep(0.05)
+        return "SlowResult"
+
+    callback_results = []
+    start_t = time.time()
+
+    # Low threshold (10ms) so LoadingPage triggers, min_display_ms = 250ms
+    gui_app.run_async_with_loading(
+        slow_coro(),
+        lambda res: callback_results.append(res),
+        threshold_ms=10,
+        min_display_ms=250
+    )
+
+    for _ in range(30):
+        time.sleep(0.02)
+        gui_app.update_idletasks()
+        gui_app.update()
+        if callback_results:
+            break
+
+    elapsed_ms = (time.time() - start_t) * 1000.0
+    assert callback_results == ["SlowResult"]
+    assert elapsed_ms >= 230  # Verified minimum display hold time enforced
+
+
+@requires_gui
 def test_stale_callback_discarding_on_timeout(gui_app: App) -> None:
     """Edge case: Backend response arrives after user timed out; stale response is discarded."""
     # User timed out -> app is now on SessionTimeoutPage
@@ -98,6 +128,30 @@ def test_animation_safety_on_widget_destruction(gui_app: App) -> None:
         page._animate()
     except Exception as err:
         pytest.fail(f"_animate raised an unexpected exception on destroyed widget: {err}")
+
+
+@requires_gui
+def test_loading_page_rhombus_animation_translation_and_wrap(gui_app: App) -> None:
+    """Verifies _animate advances rhombus coordinates rightward and wraps around on boundary exceed."""
+    page = LoadingPage(gui_app)
+    initial_x1 = page._shape_x
+    initial_x2 = page._shape2_x
+
+    # Run single animation frame
+    page._animate()
+
+    assert page._shape_x == initial_x1 + 2.5
+    assert page._shape2_x == initial_x2 + 4.5
+
+    # Force shapes past right canvas bound to test wrap-around logic
+    page._shape_x = page.canvas_width + 500
+    page._shape2_x = page.canvas_width + 500
+
+    page._animate()
+
+    assert page._shape_x == -page._shape_width - 10
+    assert page._shape2_x == -page._shape2_length - 10
+    page.destroy()
 
 
 @requires_gui

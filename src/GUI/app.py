@@ -263,21 +263,48 @@ class App(ctk.CTk):
         self,
         coro: Coroutine[Any, Any, Any],
         callback: Callable[[Any], None],
-        threshold_ms: int = 1000,
+        threshold_ms: int = 200,
+        min_display_ms: int = 1000,
     ) -> None:
         """
-        Submits a coroutine. Shows 'LoadingPage' only if execution takes longer than threshold_ms (1s).
-        Prevents screen flickering for fast/cached operations.
+        Submits a coroutine for background execution.
+        Shows 'LoadingPage' if execution takes longer than threshold_ms.
+        Guarantees that whenever 'LoadingPage' is shown, it remains visible for
+        at least min_display_ms (1000ms) to prevent awkward brief screen flickering.
         """
-        loading_job = self.after(threshold_ms, lambda: self.show_frame("LoadingPage"))
+        import time
+
+        shown_timestamp: float | None = None
+        loading_job = None
+
+        def _show_loading() -> None:
+            nonlocal shown_timestamp
+            shown_timestamp = time.time()
+            self.show_frame("LoadingPage")
+
+        loading_job = self.after(threshold_ms, _show_loading)
 
         def _wrapped_callback(result: Any) -> None:
+            nonlocal loading_job, shown_timestamp
+
+            # Cancel pending show_frame if LoadingPage has not appeared yet
             if loading_job is not None:
                 try:
                     self.after_cancel(loading_job)
                 except Exception:
                     pass
-            callback(result)
+                loading_job = None
+
+            # If LoadingPage was displayed, enforce minimum display duration
+            if shown_timestamp is not None:
+                elapsed_ms = (time.time() - shown_timestamp) * 1000.0
+                remaining_ms = max(0, min_display_ms - elapsed_ms)
+                if remaining_ms > 0:
+                    self.after(int(remaining_ms), lambda: callback(result))
+                else:
+                    callback(result)
+            else:
+                callback(result)
 
         self.run_async(coro, _wrapped_callback)
 

@@ -118,17 +118,54 @@ def test_dispatch_barcode_handlers(gui_app: App, mocker: MockerFixture) -> None:
 
 @requires_gui
 def test_borrowed_items_page_load_and_render(gui_app: App) -> None:
-    """Verifies BorrowedItemsPage loads items and renders rows in scroll_frame."""
+    """Verifies BorrowedItemsPage loads items, renders rows, and manages user name label."""
     page: BorrowedItemsPage = gui_app.frames["BorrowedItemsPage"]
     items = [
         BorrowedItem("Drill", "101", datetime.now()),
         BorrowedItem("Saw", "102", datetime.now()),
     ]
 
-    page.load(items)
-
+    # Test explicit user_name passed to load
+    page.load(items, user_name="Jane Doe")
     assert len(page._item_barcodes) == 2
     assert page._item_barcodes["Drill"] == "101"
+    assert page.user_name_label.cget("text") == "Jane Doe"
+
+    # Test implicit user_name resolution from session
+    gui_app.session.current_user_name = "Alex Morgan"
+    page.load(items)
+    assert page.user_name_label.cget("text") == "Alex Morgan"
+
+    # Test fallback to empty string when no user name is present
+    gui_app.session.current_user_name = ""
+    page.load(items)
+    assert page.user_name_label.cget("text") == ""
+
+
+@requires_gui
+def test_on_user_items_loaded_dispatches_user_name(gui_app: App) -> None:
+    """Verifies _on_user_items_loaded passes session.current_user_name to BorrowedItemsPage."""
+    gui_app.session.current_user_name = "Sam Taylor"
+    items = [BorrowedItem("Multimeter", "201", datetime.now())]
+
+    gui_app._on_user_items_loaded(items)
+
+    page: BorrowedItemsPage = gui_app.frames["BorrowedItemsPage"]
+    assert gui_app._current_page_name() == "BorrowedItemsPage"
+    assert page.user_name_label.cget("text") == "Sam Taylor"
+
+
+@requires_gui
+def test_loading_page_dual_rhombus_canvas_initialization(gui_app: App) -> None:
+    """Verifies LoadingPage initializes dual rhombus canvas properties and shape structures."""
+    from GUI.LoadingPage import LoadingPage
+    page: LoadingPage = gui_app.frames["LoadingPage"]
+
+    assert page.canvas_width == 870
+    assert page.canvas_height == 30
+    assert page._shape_width == 400
+    assert page._shape2_length == 600
+    assert page._shape2_height == 7.5
 
 
 @requires_gui
