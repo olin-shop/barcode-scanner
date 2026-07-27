@@ -35,7 +35,6 @@ def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ct
     popup.overrideredirect(True)
     popup.attributes("-topmost", True)
     popup.configure(fg_color=const.BG_WHITE)
-    popup.grab_set()
 
     # Outer container frame for rounded corners and border styling
     container = ctk.CTkFrame(
@@ -90,6 +89,16 @@ def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ct
         y = 200
 
     popup.geometry(f"{width}x{height}+{x}+{y}")
+    popup.update()
+
+    def safe_grab():
+        if popup.winfo_exists():
+            try:
+                popup.grab_set()
+            except Exception:
+                pass
+
+    popup.after(10, safe_grab)
 
     return popup
 
@@ -135,7 +144,6 @@ def show_confirm_popup(
     popup.overrideredirect(True)
     popup.attributes("-topmost", True)
     popup.configure(fg_color=const.BG_WHITE)
-    popup.grab_set()
 
     # Outer container frame for rounded corners and border styling
     container = ctk.CTkFrame(
@@ -210,5 +218,15 @@ def show_confirm_popup(
         y = 200
 
     popup.geometry(f"{width}x{height}+{x}+{y}")
+    popup.update()
+
+    def safe_grab():
+        if popup.winfo_exists():
+            try:
+                popup.grab_set()
+            except Exception:
+                pass
+
+    popup.after(10, safe_grab)
 
     return popup

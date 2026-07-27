@@ -64,7 +64,7 @@ class ScanIDPage(ctk.CTkFrame):
         # Animated square dots outside the central card in OLIN_PINK
         # Top-left corner: grows left to right
         self.tl_dots_frame = ctk.CTkFrame(self, fg_color=const.BG_WHITE)
-        self.tl_dots_frame.place(relx=0.255, rely=0.165, anchor="nw")#(relx=0.055, rely=0.03, anchor="nw")
+        self.tl_dots_frame.place(relx=0.255, rely=0.165, anchor="nw")
         self.tl_dots = [
             ctk.CTkFrame(self.tl_dots_frame, width=14, height=14, fg_color=const.OLIN_PINK, corner_radius=0)
             for _ in range(5)
@@ -72,7 +72,7 @@ class ScanIDPage(ctk.CTkFrame):
 
         # Bottom-right corner: grows right to left
         self.br_dots_frame = ctk.CTkFrame(self, fg_color=const.BG_WHITE)
-        self.br_dots_frame.place(relx=0.745, rely=0.84, anchor="se")#(relx=0.945, rely=0.97, anchor="se")
+        self.br_dots_frame.place(relx=0.745, rely=0.84, anchor="se")
         self.br_dots = [
             ctk.CTkFrame(self.br_dots_frame, width=14, height=14, fg_color=const.OLIN_PINK, corner_radius=0)
             for _ in range(5)

@@ -72,7 +72,7 @@ FONT_CLOSING_SESSION = (FONT_FAMILY, 28, "bold")
 # ---------------------------------------------------------------------------
 # Timing (milliseconds)
 # ---------------------------------------------------------------------------
-SESSION_TIMEOUT_MS: int = 30_000
+SESSION_TIMEOUT_MS: int = 50_000
 TIMEOUT_DISMISS_MS: int = 3_000
 FINAL_CONFIRM_DISMISS_MS: int = 3_000
 
