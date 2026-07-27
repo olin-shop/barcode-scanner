@@ -24,7 +24,15 @@ async def startup() -> None:
 
 def run_backend() -> None:
     """Run the Quart backend and its attached APScheduler."""
-    quart_app.run(host=HOST_IP, port=PORT, use_reloader=False)
+    import asyncio
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        # Bind to 0.0.0.0 so ngrok, localhost, and local IPs reach port 5000 cleanly
+        host = "0.0.0.0" if HOST_IP in ("127.0.0.1", "localhost") else HOST_IP
+        quart_app.run(host=host, port=PORT, use_reloader=False)
+    except Exception as e:
+        logger.error("Backend server error: %s", e, exc_info=True)
 
 
 def run_gui() -> None:
