@@ -33,10 +33,11 @@ def run_backend() -> None:
 
     config = Config()
     config.bind = [f"0.0.0.0:{PORT}"]
+    shutdown_event = asyncio.Event()
 
     try:
         logger.info("Starting Hypercorn backend server on 0.0.0.0:%d...", PORT)
-        loop.run_until_complete(serve(quart_app, config))
+        loop.run_until_complete(serve(quart_app, config, shutdown_trigger=shutdown_event.wait))
     except Exception as e:
         logger.error("Backend server error: %s", e, exc_info=True)
 
