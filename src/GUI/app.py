@@ -40,6 +40,7 @@ class App(ctk.CTk):
 
         self._timeout_job = None   # after() handle for the session timer
         self._slide_job = None     # after() handle for slide transitions
+        self._is_processing_scan = False  # Busy guard to prevent duplicate scan processing
 
         # Build pages
         self.frames = {}
@@ -155,6 +156,7 @@ class App(ctk.CTk):
     def reset_session(self) -> None:
         """Clear all session state and return to ScanIDPage."""
         self.session.reset()
+        self._is_processing_scan = False
         if self._timeout_job is not None:
             self.after_cancel(self._timeout_job)
             self._timeout_job = None
@@ -180,7 +182,7 @@ class App(ctk.CTk):
         Accumulates keypresses into a barcode buffer.
         Most USB HID barcode scanners end their transmission with <Return>.
         """
-        if event.keysym == "Return":
+        if event.keysym in ("Return", "KP_Enter"):
             barcode = self._barcode_buffer.strip()
             self._barcode_buffer = ""
             if barcode:
@@ -212,10 +214,19 @@ class App(ctk.CTk):
     # Scan handlers
 
     def _handle_id_scan(self, user_barcode: str) -> None:
+        if self._is_processing_scan:
+            logger.warning("Ignoring duplicate ID scan %s; another scan is currently processing.", user_barcode)
+            return
+        self._is_processing_scan = True
         logger.info("Scanned user id: %s", user_barcode)
+
+        def _on_done(items) -> None:
+            self._is_processing_scan = False
+            self._on_user_items_loaded(items)
+
         self.run_async_with_loading(
             self.session.start_session(user_barcode),
-            self._on_user_items_loaded,
+            _on_done,
         )
 
     def _on_user_items_loaded(self, items) -> None:
@@ -226,10 +237,19 @@ class App(ctk.CTk):
         self.show_frame("BorrowedItemsPage")
 
     def _handle_item_scan(self, item_barcode: str) -> None:
+        if self._is_processing_scan:
+            logger.warning("Ignoring duplicate item scan %s; another scan is currently processing.", item_barcode)
+            return
+        self._is_processing_scan = True
         logger.info("Scanned item id: %s", item_barcode)
+
+        def _on_done(result) -> None:
+            self._is_processing_scan = False
+            self._on_item_looked_up(result, item_barcode)
+
         self.run_async_with_loading(
             self.session.lookup_item(item_barcode),
-            lambda result: self._on_item_looked_up(result, item_barcode),
+            _on_done,
         )
 
     def _on_item_looked_up(self, result: tuple[str, bool], item_barcode: str) -> None:
