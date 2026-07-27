@@ -18,6 +18,8 @@ _current_key: Optional[str] = None
 _old_key: Optional[str] = None
 
 
+import sys
+
 def load_keys() -> None:
     """Loads the keys from the .env file into memory. Prompts for setup if they don't exist."""
     global _current_key, _old_key
@@ -33,6 +35,19 @@ def load_keys() -> None:
         _old_key = secrets.token_urlsafe(32)
         _save_keys()
 
+        # Non-interactive / CI test runner detection
+        is_non_interactive = (
+            not sys.stdin
+            or not hasattr(sys.stdin, "isatty")
+            or not sys.stdin.isatty()
+            or "PYTEST_CURRENT_TEST" in os.environ
+            or "CI" in os.environ
+        )
+
+        if is_non_interactive:
+            logger.info("Created initial API keys in .env (non-interactive mode).")
+            return
+
         # Interactive Setup Prompt
         print("\n" + "=" * 60)
         print("INITIAL API KEY GENERATED!")
@@ -44,9 +59,9 @@ def load_keys() -> None:
 
         try:
             input("Press Enter once you have copied it into Excel and saved... ")
-        except (EOFError, KeyboardInterrupt, OSError) as e:
-            logger.error("Interactive prompt failed. Are you running in a headless test environment?")
-            raise RuntimeError("API keys missing! Run `python src/backend/api_security.py` interactively to generate them.") from e
+        except (EOFError, KeyboardInterrupt, OSError):
+            logger.info("Created initial API keys in .env.")
+            return
 
         logger.info("Created initial API keys in .env.")
         return

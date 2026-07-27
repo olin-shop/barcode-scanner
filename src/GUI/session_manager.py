@@ -97,7 +97,14 @@ class SessionManager:
         name. Returns an empty list if the user has no borrowed items, or
         isn't found at all.
         """
-        name, email, time_borrowed, statuses, item_ids = await get_name(user_barcode)
+        res = await get_name(user_barcode)
+        if res is None:
+            logger.warning("get_name returned None for user_barcode=%s (timeout or network error)", user_barcode)
+            self.current_user_name = ""
+            self.current_user_email = ""
+            return []
+
+        name, email, time_borrowed, statuses, item_ids = res
         self.current_user_name = name
         self.current_user_email = email
 

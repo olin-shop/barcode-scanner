@@ -34,6 +34,10 @@ if "PORT" not in os.environ:
     os.environ["PORT"] = "5000"
 if "HOST_IP" not in os.environ:
     os.environ["HOST_IP"] = "127.0.0.1"
+if "CURRENT_API_KEY" not in os.environ:
+    os.environ["CURRENT_API_KEY"] = "test_current_api_key_123"
+if "OLD_API_KEY" not in os.environ:
+    os.environ["OLD_API_KEY"] = "test_old_api_key_456"
 
 from quart import Quart
 from quart.testing import QuartClient

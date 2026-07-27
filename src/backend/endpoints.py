@@ -4,7 +4,7 @@ How all of the local endpoints function, receiving webhook callbacks and matchin
 
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 
 from quart import Quart, request, Response, jsonify, abort
 
@@ -16,6 +16,22 @@ from backend.api_security import get_current_key
 logger = logging.getLogger(__name__)
 
 quart_app: Quart = Quart(__name__)
+
+
+def _fulfill_pending_future(request_id: Optional[str], result: Any = None, exception: Optional[Exception] = None) -> bool:
+    """Safely fulfills a pending asyncio Future across event loops / threads."""
+    if not request_id or request_id not in pending_requests:
+        return False
+    fut = pending_requests.pop(request_id)
+    if fut.done():
+        return False
+
+    loop = fut.get_loop()
+    if exception is not None:
+        loop.call_soon_threadsafe(fut.set_exception, exception)
+    else:
+        loop.call_soon_threadsafe(fut.set_result, result)
+    return True
 
 
 @quart_app.before_request
@@ -47,8 +63,7 @@ async def checkout() -> Response:
 
     logger.info("Received /checkout webhook callback (RequestID=%s, Sent=%s).", request_id, has_been_sent)
 
-    if request_id and request_id in pending_requests:
-        pending_requests.pop(request_id).set_result(has_been_sent)
+    if _fulfill_pending_future(request_id, result=has_been_sent):
         logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
     else:
         logger.warning("Received /checkout callback for unknown or expired RequestID=%s", request_id)
@@ -78,8 +93,7 @@ async def get_item_route() -> Response:
         item_status = Status.NONE
         logger.error("Invalid or unrecognized ItemStatus=%r for item %r (RequestID=%s)", raw_status, item_name, request_id)
 
-    if request_id and request_id in pending_requests:
-        pending_requests.pop(request_id).set_result((item_name, item_status))
+    if _fulfill_pending_future(request_id, result=(item_name, item_status)):
         logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
     else:
         logger.warning("Received /items callback for unknown or expired RequestID=%s", request_id)
@@ -124,12 +138,10 @@ async def get_name_route() -> Response:
             statuses.append(status)
         except (ValueError, KeyError, TypeError) as e:
             logger.error("Corrupted row data in /names callback for RequestID=%s: %s", request_id, e)
-            if request_id and request_id in pending_requests:
-                pending_requests.pop(request_id).set_exception(ValueError(f"Corrupted row data: {e}"))
+            _fulfill_pending_future(request_id, exception=ValueError(f"Corrupted row data: {e}"))
             return jsonify(EMPTY_DATA)
 
-    if request_id and request_id in pending_requests:
-        pending_requests.pop(request_id).set_result((name, email, time_borrowed, statuses, item_ids))
+    if _fulfill_pending_future(request_id, result=(name, email, time_borrowed, statuses, item_ids)):
         logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
     else:
         logger.warning("Received /names callback for unknown or expired RequestID=%s", request_id)
@@ -171,12 +183,10 @@ async def request_borrowed_items_route() -> Response:
             statuses.append(status)
         except (ValueError, KeyError, TypeError) as e:
             logger.error("Corrupted row data in /borrowed-items callback for RequestID=%s: %s", request_id, e)
-            if request_id and request_id in pending_requests:
-                pending_requests.pop(request_id).set_exception(ValueError(f"Corrupted row data: {e}"))
+            _fulfill_pending_future(request_id, exception=ValueError(f"Corrupted row data: {e}"))
             return jsonify(EMPTY_DATA)
 
-    if request_id and request_id in pending_requests:
-        pending_requests.pop(request_id).set_result((time_borrowed, statuses, item_ids))
+    if _fulfill_pending_future(request_id, result=(time_borrowed, statuses, item_ids)):
         logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
     else:
         logger.warning("Received /borrowed-items callback for unknown or expired RequestID=%s", request_id)
