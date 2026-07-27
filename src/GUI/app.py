@@ -15,6 +15,8 @@ from GUI.ReturnPage import ConfirmReturnPage
 from GUI.ConfirmationPage import FinalConfirmationPage
 from GUI.TimeoutPage import SessionTimeoutPage
 from GUI.LoadingPage import LoadingPage
+from GUI.InvalidUserPage import InvalidUserPage
+from GUI.InvalidItemPage import InvalidItemIDPage, InvalidItemPage
 from GUI.popup import show_popup
 
 logger = logging.getLogger(__name__)
@@ -52,9 +54,13 @@ class App(ctk.CTk):
             FinalConfirmationPage,
             SessionTimeoutPage,
             LoadingPage,
+            InvalidUserPage,
+            InvalidItemIDPage,
         ):
             frame = F(self)
             self.frames[F.__name__] = frame
+            if F.__name__ == "InvalidItemIDPage":
+                self.frames["InvalidItemPage"] = frame
             frame.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         self.current_page_name: str = "ScanIDPage"
@@ -142,7 +148,7 @@ class App(ctk.CTk):
             self.after_cancel(self._timeout_job)
             self._timeout_job = None
 
-        if page_name not in ("ScanIDPage", "SessionTimeoutPage", "FinalConfirmationPage"):
+        if page_name not in ("ScanIDPage", "SessionTimeoutPage", "FinalConfirmationPage", "InvalidUserPage", "InvalidItemPage", "InvalidItemIDPage"):
             self._timeout_job = self.after(const.SESSION_TIMEOUT_MS, self._on_session_timeout)
 
     def _on_session_timeout(self) -> None:
@@ -166,6 +172,19 @@ class App(ctk.CTk):
         """Show FinalConfirmationPage, then reset after the dismiss delay."""
         self.show_frame("FinalConfirmationPage")
         self.after(const.FINAL_CONFIRM_DISMISS_MS, self.reset_session)
+
+    def show_invalid_user_page(self) -> None:
+        """Show InvalidUserPage for TIMEOUT_DISMISS_MS, then return to ScanIDPage."""
+        self.show_frame("InvalidUserPage")
+        self.after(const.TIMEOUT_DISMISS_MS, self.reset_session)
+
+    def show_invalid_item_page(self) -> None:
+        """Show InvalidItemPage for TIMEOUT_DISMISS_MS, then return to BorrowedItemsPage."""
+        self.show_frame("InvalidItemPage")
+        def _return_to_borrowed():
+            if self.current_page_name in ("InvalidItemPage", "InvalidItemIDPage"):
+                self.show_frame("BorrowedItemsPage")
+        self.after(const.TIMEOUT_DISMISS_MS, _return_to_borrowed)
 
     def display_popup(self, text: str) -> ctk.CTkToplevel:
         """Display a centered, frameless warning popup with rounded corners and a close button."""
@@ -233,6 +252,10 @@ class App(ctk.CTk):
         if self._current_page_name() in ("SessionTimeoutPage", "FinalConfirmationPage"):
             logger.info("Ignoring stale user-items response; session moved on.")
             return
+        if not self.session.current_user_name:
+            logger.warning("Scanned user ID not recognized or get_name returned empty.")
+            self.show_invalid_user_page()
+            return
         self.frames["BorrowedItemsPage"].load(items, user_name=self.session.current_user_name)
         self.show_frame("BorrowedItemsPage")
 
@@ -252,12 +275,20 @@ class App(ctk.CTk):
             _on_done,
         )
 
-    def _on_item_looked_up(self, result: tuple[str, bool], item_barcode: str) -> None:
+    def _on_item_looked_up(self, result: tuple[str, bool | None], item_barcode: str) -> None:
         if self._current_page_name() in ("SessionTimeoutPage", "FinalConfirmationPage"):
             logger.info("Ignoring stale item-lookup response; session moved on.")
             return
 
         item_name, is_borrowed = result
+        if not item_name:
+            logger.warning("Scanned item ID not recognized: %s", item_barcode)
+            self.show_invalid_item_page()
+            return
+        if is_borrowed is None:
+            logger.warning("Attempted to borrow item %s (%s) which is already borrowed.", item_barcode, item_name)
+            show_popup(f"Cannot borrow '{item_name}': Item is already borrowed", self)
+            return
         if is_borrowed:
             self.frames["ConfirmReturnPage"].load(item_name, item_barcode)
             self.show_frame("ConfirmReturnPage")

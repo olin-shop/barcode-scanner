@@ -132,3 +132,15 @@ async def test_mark_missing_success(mocker: MockerFixture) -> None:
 
     assert success is True
     assert len(sm.user_items) == 0
+
+
+@pytest.mark.asyncio
+async def test_lookup_item_already_borrowed(mocker: MockerFixture) -> None:
+    """Verifies scanning an item that is already borrowed in DB returns None for is_borrowed."""
+    sm = SessionManager()
+    mocker.patch("GUI.session_manager.get_item", return_value=("Saw", Status.BORROWED))
+
+    name, is_borrowed = await sm._backend_lookup_item("12345", [])
+
+    assert name == "Saw"
+    assert is_borrowed is None
