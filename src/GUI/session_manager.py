@@ -158,13 +158,13 @@ class SessionManager:
             return "", False
 
         item_name, status = res
-        if not item_name:
-            logger.warning("Unknown item barcode scanned: %s", item_barcode)
-            return "", False
-
         if status == Status.BORROWED:
             logger.warning("Item %s (%s) is already borrowed in DB.", item_barcode, item_name)
             return item_name, None
+
+        if not item_name:
+            logger.warning("Unknown item barcode scanned: %s", item_barcode)
+            return "", False
 
         return item_name, False
 

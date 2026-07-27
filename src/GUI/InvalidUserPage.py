@@ -39,14 +39,15 @@ class InvalidUserPage(ctk.CTkFrame):
 
         ctk.CTkLabel(
             card,
-            text="User ID Not Recognized",
+            text="User ID\nNot Recognized",
             font=const.FONT_CONFIRM_HUGE,
-            text_color=const.OLIN_BLUE
-        ).place(relx=0.5, rely=0.45, anchor="center")
+            text_color=const.OLIN_BLUE,
+            justify="center"
+        ).place(relx=0.5, rely=0.42, anchor="center")
 
         ctk.CTkLabel(
             card,
             text="Please try again",
             font=const.FONT_CLOSING_SESSION,
             text_color=const.MUTED_BLUE_TEXT
-        ).place(relx=0.5, rely=0.68, anchor="center")
+        ).place(relx=0.5, rely=0.72, anchor="center")

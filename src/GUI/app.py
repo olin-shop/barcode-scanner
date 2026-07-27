@@ -281,13 +281,14 @@ class App(ctk.CTk):
             return
 
         item_name, is_borrowed = result
+        if is_borrowed is None:
+            display_name = item_name if item_name else f"Item #{item_barcode}"
+            logger.warning("Attempted to borrow item %s (%s) which is already borrowed.", item_barcode, display_name)
+            show_popup(f"Cannot borrow '{display_name}': Item is already borrowed", self)
+            return
         if not item_name:
             logger.warning("Scanned item ID not recognized: %s", item_barcode)
             self.show_invalid_item_page()
-            return
-        if is_borrowed is None:
-            logger.warning("Attempted to borrow item %s (%s) which is already borrowed.", item_barcode, item_name)
-            show_popup(f"Cannot borrow '{item_name}': Item is already borrowed", self)
             return
         if is_borrowed:
             self.frames["ConfirmReturnPage"].load(item_name, item_barcode)
