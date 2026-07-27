@@ -23,14 +23,20 @@ async def startup() -> None:
 
 
 def run_backend() -> None:
-    """Run the Quart backend and its attached APScheduler."""
+    """Run the Quart backend and its attached APScheduler in a background thread."""
     import asyncio
+    from hypercorn.asyncio import serve
+    from hypercorn.config import Config
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+
+    config = Config()
+    config.bind = [f"0.0.0.0:{PORT}"]
+
     try:
-        # Bind to 0.0.0.0 so ngrok, localhost, and local IPs reach port 5000 cleanly
-        host = "0.0.0.0" if HOST_IP in ("127.0.0.1", "localhost") else HOST_IP
-        quart_app.run(host=host, port=PORT, use_reloader=False)
+        logger.info("Starting Hypercorn backend server on 0.0.0.0:%d...", PORT)
+        loop.run_until_complete(serve(quart_app, config))
     except Exception as e:
         logger.error("Backend server error: %s", e, exc_info=True)
 
