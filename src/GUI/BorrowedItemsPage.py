@@ -108,21 +108,29 @@ class BorrowedItemsPage(ctk.CTkFrame):
 
         # Touchscreen swipe / drag scrolling support
         self._swipe_last_y = 0
+        self._is_swiping = False
 
         def _on_swipe_start(e):
+            self._is_swiping = True
             self._swipe_last_y = e.y_root
 
         def _on_swipe_drag(e):
+            if not self._is_swiping or self._swipe_last_y == 0:
+                return
             dy = self._swipe_last_y - e.y_root
             self._swipe_last_y = e.y_root
             if abs(dy) > 0:
                 step = 1 if dy > 0 else -1
                 self.scroll_frame._parent_canvas.yview_scroll(step, "units")
 
+        def _on_swipe_end(e):
+            self._is_swiping = False
+
         try:
             canvas = self.scroll_frame._parent_canvas
             canvas.bind("<ButtonPress-1>", _on_swipe_start, add="+")
             canvas.bind("<B1-Motion>", _on_swipe_drag, add="+")
+            canvas.bind("<ButtonRelease-1>", _on_swipe_end, add="+")
         except Exception:
             pass
 

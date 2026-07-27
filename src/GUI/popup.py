@@ -32,6 +32,7 @@ def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ct
         master.update_idletasks()
 
     popup = ctk.CTkToplevel(master)
+    popup.withdraw()
     popup.overrideredirect(True)
     popup.attributes("-topmost", True)
     popup.configure(fg_color=const.BG_WHITE)
@@ -89,6 +90,7 @@ def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ct
         y = 200
 
     popup.geometry(f"{width}x{height}+{x}+{y}")
+    popup.deiconify()
     popup.update()
 
     def safe_grab():
@@ -141,6 +143,7 @@ def show_confirm_popup(
         master.update_idletasks()
 
     popup = ctk.CTkToplevel(master)
+    popup.withdraw()
     popup.overrideredirect(True)
     popup.attributes("-topmost", True)
     popup.configure(fg_color=const.BG_WHITE)
@@ -218,6 +221,7 @@ def show_confirm_popup(
         y = 200
 
     popup.geometry(f"{width}x{height}+{x}+{y}")
+    popup.deiconify()
     popup.update()
 
     def safe_grab():
