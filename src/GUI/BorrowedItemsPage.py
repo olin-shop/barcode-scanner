@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import customtkinter as ctk
 
 from GUI import gui_constants as const
-from GUI.popup import show_popup
+from GUI.popup import show_popup, show_confirm_popup
 from backend.backend_types import BorrowedItem
 
 if TYPE_CHECKING:
@@ -202,79 +202,15 @@ class BorrowedItemsPage(ctk.CTkFrame):
             ).pack(side="right", padx=(10, 15))
 
     def _show_missing_popup(self, item_name: str, item_barcode: str) -> None:
-        master = self.winfo_toplevel()
-        master.update_idletasks()
-
-        popup = ctk.CTkToplevel(self)
-        popup.title("Mark as Missing")
-        popup.overrideredirect(True)
-        popup.attributes("-topmost", True)
-        popup.configure(fg_color=const.BG_LIGHT_BLUE)
-
-        # Center over master window
-        width, height = 340, 160
-        x = master.winfo_x() + (master.winfo_width() // 2) - (width // 2)
-        y = master.winfo_y() + (master.winfo_height() // 2) - (height // 2)
-        popup.geometry(f"{width}x{height}+{x}+{y}")
-        popup.grab_set()
-
-        # Slight soft shadow wrapper frame
-        shadow_frame = ctk.CTkFrame(
-            popup,
-            corner_radius=22,
-            fg_color="#C0DCF0",
-            border_width=0
-        )
-        shadow_frame.pack(fill="both", expand=True, padx=2, pady=2)
-
-        # Main light blue card container with rounded corners
-        card = ctk.CTkFrame(
-            shadow_frame,
-            corner_radius=20,
-            border_width=2,
-            border_color=const.BORDER_BLUE,
-            fg_color=const.BG_WHITE
-        )
-        card.pack(fill="both", expand=True, padx=2, pady=2)
-
-        ctk.CTkLabel(
-            card,
+        show_confirm_popup(
             text=f"Mark '{item_name}' as missing?",
-            font=const.FONT_POPUP,
-            text_color=const.DARK_BLUE_TEXT,
-            wraplength=300,
-            justify="center"
-        ).pack(pady=(20, 10), padx=15)
+            confirm_text="Mark Missing",
+            on_confirm=lambda: self._confirm_missing(item_name, item_barcode),
+            parent=self
+        )
 
-        btn_frame = ctk.CTkFrame(card, fg_color="transparent")
-        btn_frame.pack(pady=(5, 15))
-
-        ctk.CTkButton(
-            btn_frame,
-            text="Mark Missing",
-            font=(const.FONT_FAMILY, 18, "bold"),
-            fg_color=const.OLIN_PINK,
-            hover_color=const.MISSING_RED_HOVER,
-            corner_radius=12,
-            height=40,
-            command=lambda: self._confirm_missing(item_name, item_barcode, popup)
-        ).pack(side="left", padx=10)
-
-        ctk.CTkButton(
-            btn_frame,
-            text="Cancel",
-            font=(const.FONT_FAMILY, 18, "bold"),
-            fg_color=const.OLIN_BLUE,
-            hover_color=const.OLIN_BLUE_HOVER,
-            text_color=const.BG_WHITE,
-            corner_radius=12,
-            height=40,
-            command=popup.destroy
-        ).pack(side="right", padx=10)
-
-    def _confirm_missing(self, item_name: str, item_barcode: str, popup) -> None:
+    def _confirm_missing(self, item_name: str, item_barcode: str) -> None:
         app = self.winfo_toplevel()
-        popup.destroy()
         app.show_frame("LoadingPage")
         app.run_async(
             app.session.mark_missing(item_barcode, item_name),

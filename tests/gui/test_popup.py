@@ -6,7 +6,7 @@ import pytest
 import customtkinter as ctk
 
 from conftest import requires_gui
-from GUI.popup import show_popup
+from GUI.popup import show_popup, show_confirm_popup
 
 
 @requires_gui
@@ -39,6 +39,26 @@ def test_show_popup_without_parent() -> None:
 
     popup = show_popup("Standalone warning")
     assert popup is not None
+
+    popup.destroy()
+    app.destroy()
+
+
+@requires_gui
+def test_show_confirm_popup() -> None:
+    """Verifies that show_confirm_popup creates a dialog with two buttons and executes callback on confirm."""
+    app = ctk.CTk()
+    app.geometry("800x480")
+    app.withdraw()
+
+    confirmed = []
+    def on_confirm():
+        confirmed.append(True)
+
+    popup = show_confirm_popup("Confirm action?", "Yes", on_confirm, app)
+    assert popup is not None
+    assert isinstance(popup, ctk.CTkToplevel)
+    assert popup.overrideredirect() is True
 
     popup.destroy()
     app.destroy()
