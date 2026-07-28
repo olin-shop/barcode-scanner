@@ -45,6 +45,9 @@ def test_app_initialization(gui_app: App) -> None:
         "FinalConfirmationPage",
         "SessionTimeoutPage",
         "LoadingPage",
+        "InvalidUserPage",
+        "InvalidItemIDPage",
+        "InvalidItemPage",
     }
 
     assert set(gui_app.frames.keys()) == expected_page_names
@@ -180,3 +183,31 @@ def test_confirm_borrow_and_return_page_load(gui_app: App) -> None:
     return_page.load("3D Printer", "BC_88")
     assert return_page._item_name == "3D Printer"
     assert return_page._item_barcode == "BC_88"
+
+
+@requires_gui
+def test_on_item_looked_up_already_borrowed(gui_app: App, mocker: MockerFixture) -> None:
+    """Verifies an already borrowed item (is_borrowed=None) shows a popup and stays on current page."""
+    mock_popup = mocker.patch("GUI.app.show_popup")
+    gui_app.show_frame("BorrowedItemsPage")
+
+    gui_app._on_item_looked_up(("Saw", None), "12345")
+
+    mock_popup.assert_called_once()
+    assert "already borrowed" in mock_popup.call_args[0][0].lower()
+    assert gui_app._current_page_name() == "BorrowedItemsPage"
+
+
+@requires_gui
+def test_on_item_looked_up_already_borrowed_empty_name(gui_app: App, mocker: MockerFixture) -> None:
+    """Verifies an already borrowed item with empty name shows popup and does NOT show InvalidItemPage."""
+    mock_popup = mocker.patch("GUI.app.show_popup")
+    mock_invalid = mocker.patch.object(gui_app, "show_invalid_item_page")
+    gui_app.show_frame("BorrowedItemsPage")
+
+    gui_app._on_item_looked_up(("", None), "12345")
+
+    mock_popup.assert_called_once()
+    mock_invalid.assert_not_called()
+    assert "already borrowed" in mock_popup.call_args[0][0].lower()
+    assert gui_app._current_page_name() == "BorrowedItemsPage"

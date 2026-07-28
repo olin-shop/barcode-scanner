@@ -49,10 +49,11 @@ class SessionManager:
 
     # ---- Item scan -----------------------------------------------------------
 
-    async def lookup_item(self, item_barcode: str) -> tuple[str, bool]:
+    async def lookup_item(self, item_barcode: str) -> tuple[str, bool | None]:
         """
         Returns (item_name, is_borrowed) for a scanned item barcode,
         checked against the current session's borrowed items.
+        is_borrowed is None if the item is already borrowed by someone else.
         """
         return await self._backend_lookup_item(item_barcode, self.user_items)
 
@@ -128,16 +129,17 @@ class SessionManager:
 
     async def _backend_lookup_item(
         self, item_barcode: str, user_items: list[BorrowedItem]
-    ) -> tuple[str, bool]:
+    ) -> tuple[str, bool | None]:
         """
         Called when an item barcode is scanned on the BorrowedItemsPage.
 
         Returns
         -------
-        tuple[str, bool]
+        tuple[str, bool | None]
             (item_name, is_borrowed) where is_borrowed True means the item
-            is already borrowed by this user (-> return flow), and False
-            means it's new (-> borrow flow).
+            is already borrowed by this user (-> return flow), False means
+            it's new (-> borrow flow), and None means it's already borrowed
+            by someone else in the DB (-> error popup).
         """
         # Fast path: we already know this item is borrowed by this user
         # this session, no need to round-trip to the backend.
@@ -148,14 +150,23 @@ class SessionManager:
         item_id = to_item_id(item_barcode)
         if item_id is None:
             logger.warning("Received a non-numeric item barcode: %r", item_barcode)
-            return f"Item ({item_barcode})", False
+            return "", False
 
-        item_name, status = await get_item(item_id)
+        res = await get_item(item_id)
+        if res is None:
+            logger.warning("get_item returned None for barcode=%s", item_barcode)
+            return "", False
+
+        item_name, status = res
+        if status == Status.BORROWED:
+            logger.warning("Item %s (%s) is already borrowed in DB.", item_barcode, item_name)
+            return item_name, None
+
         if not item_name:
             logger.warning("Unknown item barcode scanned: %s", item_barcode)
-            return f"Item ({item_barcode})", False
+            return "", False
 
-        return item_name, status == Status.BORROWED
+        return item_name, False
 
     async def _backend_confirm_borrow(
         self, user_barcode: str | None, item_barcode: str, item_name: str

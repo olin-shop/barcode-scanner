@@ -31,11 +31,11 @@ class ScanIDPage(ctk.CTkFrame):
         # doesn't care what directory it was launched from.
         try:
             image_path = const.STATIC_DIR / "olin_blue_corner.png"
-            img = Image.open(image_path)
-            self.corner_tl = ctk.CTkImage(light_image=img,                          dark_image=img,                          size=(90, 90))
-            self.corner_tr = ctk.CTkImage(light_image=img.rotate(270, expand=True), dark_image=img.rotate(270, expand=True), size=(90, 90))
-            self.corner_bl = ctk.CTkImage(light_image=img.rotate(90,  expand=True), dark_image=img.rotate(90,  expand=True), size=(90, 90))
-            self.corner_br = ctk.CTkImage(light_image=img.rotate(180, expand=True), dark_image=img.rotate(180, expand=True), size=(90, 90))
+            self._base_img = Image.open(image_path)
+            self.corner_tl = ctk.CTkImage(light_image=self._base_img,                          dark_image=self._base_img,                          size=(90, 90))
+            self.corner_tr = ctk.CTkImage(light_image=self._base_img.rotate(270, expand=True), dark_image=self._base_img.rotate(270, expand=True), size=(90, 90))
+            self.corner_bl = ctk.CTkImage(light_image=self._base_img.rotate(90,  expand=True), dark_image=self._base_img.rotate(90,  expand=True), size=(90, 90))
+            self.corner_br = ctk.CTkImage(light_image=self._base_img.rotate(180, expand=True), dark_image=self._base_img.rotate(180, expand=True), size=(90, 90))
 
             self.lbl_corner_tl = ctk.CTkLabel(card, image=self.corner_tl, text="")
             self.lbl_corner_tr = ctk.CTkLabel(card, image=self.corner_tr, text="")
@@ -47,6 +47,7 @@ class ScanIDPage(ctk.CTkFrame):
             self.lbl_corner_bl.place(relx=.15, rely=.8, anchor="center")
             self.lbl_corner_br.place(relx=.85, rely=.8, anchor="center")
         except Exception:
+            self._base_img = None
             self.lbl_corner_tl = None
             self.lbl_corner_tr = None
             self.lbl_corner_bl = None
@@ -61,27 +62,45 @@ class ScanIDPage(ctk.CTkFrame):
         )
         self.scan_id_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Animated square dots outside the central card in OLIN_PINK
+        # Animated square dots INSIDE the central card in OLIN_PINK
         # Top-left corner: grows left to right
-        self.tl_dots_frame = ctk.CTkFrame(self, fg_color=const.BG_WHITE)
-        self.tl_dots_frame.place(relx=0.255, rely=0.165, anchor="nw")
-        self.tl_dots = [
-            ctk.CTkFrame(self.tl_dots_frame, width=14, height=14, fg_color=const.OLIN_PINK, corner_radius=0)
-            for _ in range(5)
-        ]
+        self.tl_dots_frame = ctk.CTkFrame(card, fg_color=const.BG_WHITE)
+        self.tl_dots_frame.place(relx=0.222, rely=0.092, anchor="nw")
+        self.tl_dots = []
+        for _ in range(5):
+            dot = ctk.CTkFrame(self.tl_dots_frame, width=14, height=14, fg_color=const.BG_WHITE, corner_radius=0)
+            dot.pack(side="left", padx=3)
+            self.tl_dots.append(dot)
 
         # Bottom-right corner: grows right to left
-        self.br_dots_frame = ctk.CTkFrame(self, fg_color=const.BG_WHITE)
-        self.br_dots_frame.place(relx=0.745, rely=0.84, anchor="se")
-        self.br_dots = [
-            ctk.CTkFrame(self.br_dots_frame, width=14, height=14, fg_color=const.OLIN_PINK, corner_radius=0)
-            for _ in range(5)
-        ]
+        self.br_dots_frame = ctk.CTkFrame(card, fg_color=const.BG_WHITE)
+        self.br_dots_frame.place(relx=0.778, rely=0.915, anchor="se")
+        self.br_dots = []
+        for _ in range(5):
+            dot = ctk.CTkFrame(self.br_dots_frame, width=14, height=14, fg_color=const.BG_WHITE, corner_radius=0)
+            dot.pack(side="left", padx=3)
+            self.br_dots.append(dot)
 
         self._dots_count = 0
         self._dots_direction = 1
         self._is_confirming = False
         self._animate_dots()
+
+    def update_scale(self, scale: float) -> None:
+        """Dynamically scale fonts, images, and dots when screen size changes."""
+        new_font_size = max(24, int(88 * scale))
+        self.scan_id_label.configure(font=(const.FONT_FAMILY, new_font_size, "bold"))
+
+        if hasattr(self, "_base_img") and self._base_img:
+            img_size = max(30, int(90 * scale))
+            self.corner_tl.configure(size=(img_size, img_size))
+            self.corner_tr.configure(size=(img_size, img_size))
+            self.corner_bl.configure(size=(img_size, img_size))
+            self.corner_br.configure(size=(img_size, img_size))
+
+        dot_size = max(6, int(14 * scale))
+        for dot in self.tl_dots + self.br_dots:
+            dot.configure(width=dot_size, height=dot_size)
 
     def trigger_confirm_animation(self, on_complete: callable = None) -> None:
         """
@@ -134,12 +153,13 @@ class ScanIDPage(ctk.CTkFrame):
 
         try:
             for i in range(5):
-                if i < self._dots_count:
-                    self.tl_dots[i].pack(side="left", padx=3)
-                    self.br_dots[i].pack(side="right", padx=3)
-                else:
-                    self.tl_dots[i].pack_forget()
-                    self.br_dots[i].pack_forget()
+                # Top-left: grows left-to-right (0 -> 1 -> 2 -> 3 -> 4)
+                tl_color = const.OLIN_PINK if i < self._dots_count else const.BG_WHITE
+                self.tl_dots[i].configure(fg_color=tl_color)
+
+                # Bottom-right: grows right-to-left (4 -> 3 -> 2 -> 1 -> 0)
+                br_color = const.OLIN_PINK if i >= (5 - self._dots_count) else const.BG_WHITE
+                self.br_dots[i].configure(fg_color=br_color)
 
             if self._dots_count == 5:
                 self._dots_direction = -1
