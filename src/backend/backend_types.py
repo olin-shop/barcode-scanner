@@ -37,7 +37,6 @@ class UserInfoPayload(TypedDict):
     """
 
     name: str
-    user_id: str
     email: str
     item_id: int
     borrowed_date: datetime

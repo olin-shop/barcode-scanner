@@ -25,8 +25,8 @@ class FakeDatabase:
     """
     def __init__(self) -> None:
         self.users = {
-            "OL01509": {"Name": "John Doe", "Email": "jdoe@olin.edu"},
-            "OL999": {"Name": "Alice Smith", "Email": "asmith@olin.edu"}
+            "jdoe@olin.edu": {"Name": "John Doe", "Email": "jdoe@olin.edu"},
+            "asmith@olin.edu": {"Name": "Alice Smith", "Email": "asmith@olin.edu"}
         }
         self.items = {
             11134: {"ItemName": "Power Drill", "ItemStatus": "In Stock"},
@@ -36,7 +36,6 @@ class FakeDatabase:
             123: {
                 "Name": "John Doe", 
                 "Email": "jdoe@olin.edu", 
-                "UserID": "OL01509", 
                 "ItemID": 123, 
                 "DateBorrowed": 45000.0, 
                 "DateReturned": to_excel_date(min_datetime), 
@@ -44,18 +43,17 @@ class FakeDatabase:
             }
         }
 
-    def checkout(self, item_id: int, user_id: str, status: str, date_borrowed: float) -> None:
+    def checkout(self, item_id: int, email: str, status: str, date_borrowed: float) -> None:
         """Process a checkout action in the mock DB."""
         if item_id in self.items:
             self.items[item_id]["ItemStatus"] = status
             
-            user_info = self.users.get(user_id, {"Name": "Unknown", "Email": ""})
+            user_info = self.users.get(email, {"Name": "Unknown", "Email": ""})
             
             if status == "Borrowed":
                 self.active_checkouts[item_id] = {
                     "Name": user_info["Name"],
                     "Email": user_info["Email"],
-                    "UserID": user_id,
                     "ItemID": item_id,
                     "DateBorrowed": date_borrowed or to_excel_date(min_datetime),
                     "DateReturned": to_excel_date(min_datetime),
@@ -68,11 +66,11 @@ class FakeDatabase:
         """Fetch all currently active checkouts."""
         return list(self.active_checkouts.values())
 
-    def get_user_history(self, user_id: str) -> list[dict]:
+    def get_user_history(self, email: str) -> list[dict]:
         """Fetch all checkout history for a specific user."""
         return [
             data for data in self.active_checkouts.values() 
-            if data.get("UserID") == user_id
+            if data.get("Email") == email
         ]
 
 @pytest.fixture
@@ -96,10 +94,10 @@ def fake_power_automate(client: QuartClient, mocker: MockerFixture, fake_db: Fak
         async def trigger_callback() -> None:
             try:
                 
-                if "UserID" in json and "ItemID" in json and "ItemStatus" in json:
+                if "Email" in json and "ItemID" in json and "ItemStatus" in json:
                     fake_db.checkout(
                         json.get("ItemID"), 
-                        json.get("UserID"), 
+                        json.get("Email"), 
                         json.get("ItemStatus"), 
                         json.get("DateBorrowed")
                     )
@@ -114,14 +112,14 @@ def fake_power_automate(client: QuartClient, mocker: MockerFixture, fake_db: Fak
                         "ItemStatus": item_data["ItemStatus"]
                     }, headers=api_key_header)
                     
-                elif "UserID" in json and "ItemID" not in json:
-                    user_id = json.get("UserID")
-                    user_data = fake_db.users.get(user_id, {"Name": "Unknown", "Email": ""})
+                elif "Email" in json and "ItemID" not in json:
+                    email = json.get("Email")
+                    user_data = fake_db.users.get(email, {"Name": "Unknown", "Email": ""})
                     await client.post("/names", json={
                         "RequestID": req_id,
                         "Name": user_data["Name"],
                         "Email": user_data["Email"],
-                        "excelData": fake_db.get_user_history(user_id)
+                        "excelData": fake_db.get_user_history(email)
                     }, headers=api_key_header)
                     
                 else:
@@ -144,7 +142,7 @@ def fake_power_automate(client: QuartClient, mocker: MockerFixture, fake_db: Fak
 @pytest.mark.asyncio
 async def test_get_name_flow(fake_power_automate: None) -> None:
     """Verifies that calling get_name successfully retrieves user info from the mock DB."""
-    res = await get_name("OL01509")
+    res = await get_name("jdoe@olin.edu")
     assert res is not None
     name, email, dates, statuses, ids = res
     assert name == "John Doe"
@@ -169,7 +167,6 @@ async def test_checkout_and_request_borrowed(fake_power_automate: None) -> None:
     
     payload: UserInfoPayload = {
         "name": "Alice Smith",
-        "user_id": "OL999",
         "email": "asmith@olin.edu",
         "item_id": 11134,
         "borrowed_date": datetime.now(),
@@ -187,8 +184,8 @@ async def test_checkout_and_request_borrowed(fake_power_automate: None) -> None:
 
 @pytest.mark.asyncio
 async def test_unknown_user_flow(fake_power_automate: None) -> None:
-    """Test that an unknown barcode correctly maps to our 'Unknown' mock default."""
-    res = await get_name("INVALID_BARCODE")
+    """Test that an unknown email correctly maps to our 'Unknown' mock default."""
+    res = await get_name("invalid@email.com")
     assert res is not None
     name, email, _, _, _ = res
     assert name == "Unknown"
@@ -216,7 +213,7 @@ async def test_power_automate_timeout(mocker: MockerFixture) -> None:
     mocker.patch("backend.requests.requests.post", side_effect=mock_timeout)
     mocker.patch("backend.requests.asyncio.wait_for", side_effect=asyncio.TimeoutError)
     
-    res = await get_name("OL01509")
+    res = await get_name("jdoe@olin.edu")
     assert res is None
     
     assert len(pending_requests) == 0

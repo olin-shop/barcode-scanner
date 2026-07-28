@@ -7,6 +7,7 @@ import asyncio
 from datetime import datetime
 import logging
 
+import pandas as pd
 import requests_async as requests
 
 from backend.backend_constants import (
@@ -14,11 +15,13 @@ from backend.backend_constants import (
     ITEM_URL,
     NAME_URL,
     BORROWED_ITEMS_URL,
+    INTRO_URL,
+    ELEC_URL,
     TIMEOUT,
     to_excel_date,
     db_to_class_conversion,
 )
-from backend.app_state import pending_requests
+from backend.app_state import pending_requests, sheet_cache
 from backend.backend_types import Status, UserInfoPayload
 import uuid
 from typing import Optional
@@ -28,21 +31,21 @@ logger = logging.getLogger(__name__)
 
 
 async def get_name(
-    barcode: str,
+    email: str,
 ) -> Optional[tuple[str, str, list[datetime], list[Status], list[int]]]:
     """
-    Gathers the name and currently borrowed items attached to a given barcode.
+    Gathers the name and currently borrowed items attached to a given email.
 
     This function generates a unique request identifier and creates an asynchronous 
     placeholder. It sends a POST request to the Power Automate pipeline, passing along 
-    both the barcode and the unique ID. It then pauses execution (for up to 15 seconds) 
+    both the email and the unique ID. It then pauses execution (for up to 15 seconds) 
     until the `/names` endpoint receives the matching webhook callback and fulfills 
     the placeholder with the requested data.
 
     Parameters
     ----------
-    barcode : str
-        The barcode attached to the name.
+    email : str
+        The email attached to the name.
 
     Returns
     -------
@@ -52,12 +55,12 @@ async def get_name(
         request fails or times out.
     """
     request_id: str = str(uuid.uuid4())
-    send_json: dict[str, str] = {"UserID": barcode, "RequestID": request_id}
+    send_json: dict[str, str] = {"Email": email, "RequestID": request_id}
 
     future: asyncio.Future = asyncio.get_running_loop().create_future()
     pending_requests[request_id] = future
 
-    logger.info("Initiating get_name request for user_barcode=%s (RequestID=%s).", barcode, request_id)
+    logger.info("Initiating get_name request for user_email=%s (RequestID=%s).", email, request_id)
 
     try:
         headers = {"x-api-key": get_current_key()}
@@ -66,16 +69,16 @@ async def get_name(
             raise ValueError(f"HTTP dispatch status {res.status_code}")
     except Exception as e:
         pending_requests.pop(request_id, None)
-        logger.error("Failed to send get_name request for user_barcode=%s: %s", barcode, e)
+        logger.error("Failed to send get_name request for user_email=%s: %s", email, e)
         return None
 
     try:
         result = await asyncio.wait_for(future, timeout=15.0)
-        logger.info("Successfully received get_name result for user_barcode=%s (RequestID=%s).", barcode, request_id)
+        logger.info("Successfully received get_name result for user_email=%s (RequestID=%s).", email, request_id)
         return result
     except asyncio.TimeoutError:
         pending_requests.pop(request_id, None)
-        logger.warning("Timeout: Power Automate never responded for get_name RequestID=%s (user_barcode=%s).", request_id, barcode)
+        logger.warning("Timeout: Power Automate never responded for get_name RequestID=%s (user_email=%s).", request_id, email)
         return None
     except ValueError as e:
         logger.error("Data error in get_name for RequestID=%s: %s", request_id, e)
@@ -167,7 +170,6 @@ async def checkout(user_info: UserInfoPayload) -> bool:
     request_id: str = str(uuid.uuid4())
     send_json: dict[str, str | int | float] = {
         "Name": "",
-        "UserID": "",
         "Email": "",
         "ItemID": 0,
         "DateBorrowed": 0.0,
@@ -193,7 +195,7 @@ async def checkout(user_info: UserInfoPayload) -> bool:
 
     logger.info(
         "Initiating checkout pipeline commit for user=%s item=%s (Status=%s, RequestID=%s).",
-        user_info.get("user_id"),
+        user_info.get("email"),
         user_info.get("item_id"),
         user_info.get("item_status"),
         request_id,
@@ -269,4 +271,100 @@ async def request_borrowed_items() -> Optional[tuple[list[datetime], list[Status
         return None
     except ValueError as e:
         logger.error("Data error in request_borrowed_items for RequestID=%s: %s", request_id, e)
+        return None
+
+
+async def gather_intro_data() -> Optional[pd.DataFrame]:
+    """
+    Requests the intro sheet data from Power Automate.
+    Checks the 24-hour cache first before making the request.
+
+    Returns
+    -------
+    Optional[pd.DataFrame]
+        A pandas DataFrame containing the sheet data. Returns None if the
+        request fails or times out.
+    """
+    now = datetime.now()
+    cache = sheet_cache["intro"]
+    if cache["data"] is not None and cache["timestamp"] is not None:
+        if (now - cache["timestamp"]).total_seconds() < 86400:
+            logger.info("Using cached intro-sheet data.")
+            return cache["data"]
+
+    request_id: str = str(uuid.uuid4())
+    future: asyncio.Future = asyncio.get_running_loop().create_future()
+    pending_requests[request_id] = future
+
+    logger.info("Initiating gather_intro_data (RequestID=%s).", request_id)
+    try:
+        headers = {"x-api-key": get_current_key()}
+        res = await requests.post(INTRO_URL, json={"RequestID": request_id}, headers=headers, timeout=TIMEOUT)
+        if res.status_code not in (200, 202):
+            raise ValueError(f"HTTP dispatch status {res.status_code}")
+    except Exception as e:
+        pending_requests.pop(request_id, None)
+        logger.error("Failed to send gather_intro_data: %s", e)
+        return None
+
+    try:
+        result = await asyncio.wait_for(future, timeout=15.0)
+        logger.info("Successfully received intro-sheet data for RequestID=%s.", request_id)
+        sheet_cache["intro"]["data"] = result
+        sheet_cache["intro"]["timestamp"] = datetime.now()
+        return result
+    except asyncio.TimeoutError:
+        pending_requests.pop(request_id, None)
+        logger.warning("Timeout: Power Automate never responded for gather_intro_data RequestID=%s.", request_id)
+        return None
+    except ValueError as e:
+        logger.error("Data error in gather_intro_data for RequestID=%s: %s", request_id, e)
+        return None
+
+
+async def gather_303_data() -> Optional[pd.DataFrame]:
+    """
+    Requests the 303 sheet data from Power Automate.
+    Checks the 24-hour cache first before making the request.
+
+    Returns
+    -------
+    Optional[pd.DataFrame]
+        A pandas DataFrame containing the sheet data. Returns None if the
+        request fails or times out.
+    """
+    now = datetime.now()
+    cache = sheet_cache["303"]
+    if cache["data"] is not None and cache["timestamp"] is not None:
+        if (now - cache["timestamp"]).total_seconds() < 86400:
+            logger.info("Using cached 303-sheet data.")
+            return cache["data"]
+
+    request_id: str = str(uuid.uuid4())
+    future: asyncio.Future = asyncio.get_running_loop().create_future()
+    pending_requests[request_id] = future
+
+    logger.info("Initiating gather_303_data (RequestID=%s).", request_id)
+    try:
+        headers = {"x-api-key": get_current_key()}
+        res = await requests.post(ELEC_URL, json={"RequestID": request_id}, headers=headers, timeout=TIMEOUT)
+        if res.status_code not in (200, 202):
+            raise ValueError(f"HTTP dispatch status {res.status_code}")
+    except Exception as e:
+        pending_requests.pop(request_id, None)
+        logger.error("Failed to send gather_303_data: %s", e)
+        return None
+
+    try:
+        result = await asyncio.wait_for(future, timeout=15.0)
+        logger.info("Successfully received 303-sheet data for RequestID=%s.", request_id)
+        sheet_cache["303"]["data"] = result
+        sheet_cache["303"]["timestamp"] = datetime.now()
+        return result
+    except asyncio.TimeoutError:
+        pending_requests.pop(request_id, None)
+        logger.warning("Timeout: Power Automate never responded for gather_303_data RequestID=%s.", request_id)
+        return None
+    except ValueError as e:
+        logger.error("Data error in gather_303_data for RequestID=%s: %s", request_id, e)
         return None

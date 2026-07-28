@@ -38,8 +38,8 @@ pytestmark = [
 @pytest.mark.asyncio
 async def test_live_get_name() -> None:
     """Verifies that the live get_name flow successfully queries Power Automate."""
-    fake_barcode = "OL01509"
-    res = await get_name(fake_barcode)
+    fake_email = "jdoe@olin.edu"
+    res = await get_name(fake_email)
     assert res is not None, "get_name timed out waiting for Power Automate webhook"
 
 @pytest.mark.asyncio
@@ -54,7 +54,6 @@ async def test_live_checkout() -> None:
     """Verifies that the live checkout flow successfully pushes to Power Automate."""
     payload: UserInfoPayload = {
         "name": "John Doe",
-        "user_id": "OL01509",
         "email": "jdoe@olin.edu",
         "item_id": 11134,
         "borrowed_date": datetime.now(),

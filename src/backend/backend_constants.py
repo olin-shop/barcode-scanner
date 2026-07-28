@@ -24,6 +24,10 @@ try:
 
     BORROWED_ITEMS_URL: str = os.environ["BORROWED_ITEMS_URL"]
 
+    INTRO_URL: str = os.environ["INTRO_URL"]
+
+    ELEC_URL: str = os.environ["ELEC_URL"]
+
     PORT: int = int(os.environ["PORT"])
 
     HOST_IP: str = os.environ["HOST_IP"]
@@ -54,7 +58,6 @@ REMINDER_HOUR: int = int(os.environ.get("REMINDER_HOUR", 8))
 
 db_to_class_conversion: dict[str, str] = {
     "Name": "name",
-    "UserID": "user_id",
     "Email": "email",
     "DateBorrowed": "borrowed_date",
     "DateReturned": "returned_date",

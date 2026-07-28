@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 from typing import Optional, Any
 
+import pandas as pd
 from quart import Quart, request, Response, jsonify, abort
 
 from backend.backend_types import Status
@@ -190,5 +191,55 @@ async def request_borrowed_items_route() -> Response:
         logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
     else:
         logger.warning("Received /borrowed-items callback for unknown or expired RequestID=%s", request_id)
+
+    return jsonify(EMPTY_DATA)
+
+
+@quart_app.route("/intro-sheet", methods=["POST"])
+async def intro_sheet_route() -> Response:
+    """
+    Receives the intro sheet data from the pipeline webhook.
+    Converts the excelData list of dicts to a pandas DataFrame and fulfills the pending request.
+    """
+    payload: dict = await request.get_json()
+    request_id: Optional[str] = payload.get("RequestID")
+    excel_data: list[dict] = payload.get("excelData", [])
+
+    logger.info("Received /intro-sheet webhook callback (RequestID=%s, RowsCount=%d).", request_id, len(excel_data))
+
+    try:
+        df = pd.DataFrame(excel_data)
+        if _fulfill_pending_future(request_id, result=df):
+            logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
+        else:
+            logger.warning("Received /intro-sheet callback for unknown or expired RequestID=%s", request_id)
+    except Exception as e:
+        logger.error("Failed to parse intro-sheet data for RequestID=%s: %s", request_id, e)
+        _fulfill_pending_future(request_id, exception=e)
+
+    return jsonify(EMPTY_DATA)
+
+
+@quart_app.route("/303-sheet", methods=["POST"])
+async def sheet_303_route() -> Response:
+    """
+    Receives the 303 sheet data from the pipeline webhook.
+    Converts the excelData list of dicts to a pandas DataFrame and fulfills the pending request.
+    """
+    payload: dict = await request.get_json()
+    request_id: Optional[str] = payload.get("RequestID")
+    excel_data: list[dict] = payload.get("excelData", [])
+
+    logger.info("Received /303-sheet webhook callback (RequestID=%s, RowsCount=%d).", request_id, len(excel_data))
+
+    try:
+        df = pd.DataFrame(excel_data)
+        if _fulfill_pending_future(request_id, result=df):
+            logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
+        else:
+            logger.warning("Received /303-sheet callback for unknown or expired RequestID=%s", request_id)
+    except Exception as e:
+        logger.error("Failed to parse 303-sheet data for RequestID=%s: %s", request_id, e)
+        _fulfill_pending_future(request_id, exception=e)
 
     return jsonify(EMPTY_DATA)
