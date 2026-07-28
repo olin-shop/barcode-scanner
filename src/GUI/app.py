@@ -65,9 +65,11 @@ class App(ctk.CTk):
 
         self.current_page_name: str = "ScanIDPage"
 
-        # Wire up simulated barcode HID scanner entry
+        # Wire up simulated barcode HID scanner entry and window resize scaling
         self._barcode_buffer = ""
+        self._current_scale = 1.0
         self.bind("<Key>", self._on_key)
+        self.bind("<Configure>", self._on_window_resize)
 
         # Thread-safe queue for async background callbacks
         self._async_queue: queue.Queue = queue.Queue()
@@ -79,6 +81,28 @@ class App(ctk.CTk):
 
         # Show initial page
         self.show_frame("ScanIDPage")
+
+    def _on_window_resize(self, event) -> None:
+        """Dynamically update app scale factor when main window is resized."""
+        if event.widget != self:
+            return
+        w, h = event.width, event.height
+        if w < 100 or h < 100:
+            return
+        # Base target dimensions: 800 x 480
+        scale = max(0.4, min(w / 800.0, h / 480.0))
+        if abs(scale - self._current_scale) > 0.02:
+            self._current_scale = scale
+            self._apply_scale(scale)
+
+    def _apply_scale(self, scale: float) -> None:
+        """Notify registered frame pages when window scale factor changes."""
+        for frame in self.frames.values():
+            if hasattr(frame, "update_scale") and callable(frame.update_scale):
+                try:
+                    frame.update_scale(scale)
+                except Exception as e:
+                    logger.error("Error scaling frame %s: %s", frame, e)
 
     def _poll_async_queue(self) -> None:
         """Polls for callbacks queued by background async threads."""

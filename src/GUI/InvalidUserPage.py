@@ -37,17 +37,30 @@ class InvalidUserPage(ctk.CTkFrame):
         except Exception:
             pass
 
-        ctk.CTkLabel(
+        self.header_label = ctk.CTkLabel(
             card,
             text="User ID\nNot Recognized",
             font=const.FONT_CONFIRM_HUGE,
             text_color=const.OLIN_BLUE,
             justify="center"
-        ).place(relx=0.5, rely=0.42, anchor="center")
+        )
+        self.header_label.place(relx=0.5, rely=0.42, anchor="center")
 
-        ctk.CTkLabel(
+        self.sub_label = ctk.CTkLabel(
             card,
             text="Please try again",
             font=const.FONT_CLOSING_SESSION,
             text_color=const.MUTED_BLUE_TEXT
-        ).place(relx=0.5, rely=0.72, anchor="center")
+        )
+        self.sub_label.place(relx=0.5, rely=0.72, anchor="center")
+
+    def update_scale(self, scale: float) -> None:
+        """Dynamically scale header, subtitle, and logo on window resize."""
+        new_header_size = max(24, int(80 * scale))
+        new_sub_size = max(12, int(28 * scale))
+        self.header_label.configure(font=(const.FONT_FAMILY, new_header_size, "bold"))
+        self.sub_label.configure(font=(const.FONT_FAMILY, new_sub_size, "bold"))
+        if hasattr(self, "logo_image") and self.logo_image:
+            w = max(60, int(160 * scale))
+            h = max(22, int(60 * scale))
+            self.logo_image.configure(size=(w, h))
