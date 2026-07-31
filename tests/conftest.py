@@ -30,6 +30,10 @@ if "CHECKOUT_URL" not in os.environ:
     os.environ["CHECKOUT_URL"] = "http://fake-url/checkout"
 if "BORROWED_ITEMS_URL" not in os.environ:
     os.environ["BORROWED_ITEMS_URL"] = "http://fake-url/borrowed-items"
+if "INTRO_URL" not in os.environ:
+    os.environ["INTRO_URL"] = "http://fake-url/intro-sheet"
+if "ELEC_URL" not in os.environ:
+    os.environ["ELEC_URL"] = "http://fake-url/303-sheet"
 if "PORT" not in os.environ:
     os.environ["PORT"] = "5000"
 if "HOST_IP" not in os.environ:

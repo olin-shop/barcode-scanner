@@ -5,6 +5,7 @@ per-user session state and backend communication for the kiosk app.
 
 import logging
 from datetime import datetime
+from typing import Any
 
 from backend.backend_constants import min_datetime
 from backend.backend_types import BorrowedItem, Status, UserInfoPayload, to_item_id
@@ -24,6 +25,8 @@ class SessionManager:
     """
 
     def __init__(self) -> None:
+        self.selected_category: str | None = None
+        self.selected_student: Any = None
         self.current_user_barcode: str | None = None
         self.current_user_name: str = ""
         self.current_user_email: str = ""
@@ -34,15 +37,30 @@ class SessionManager:
     def reset(self) -> None:
         """Clear all session state, ready for the next user."""
         logger.info("Resetting session (previous user=%s)", self.current_user_barcode)
+        self.selected_category = None
+        self.selected_student = None
         self.current_user_barcode = None
         self.current_user_name = ""
         self.current_user_email = ""
         self.user_items = []
 
-    # ---- ID scan -------------------------------------------------------------
+    def set_selected_category(self, category: str) -> None:
+        """Sets the selected enrollment year or category for user selection."""
+        self.selected_category = category
+
+    def select_student(self, student: Any) -> None:
+        """Selects a student record and initializes user details using email as unique identifier."""
+        self.selected_student = student
+        if hasattr(student, "email"):
+            self.current_user_barcode = student.email
+            self.current_user_email = student.email
+        if hasattr(student, "name"):
+            self.current_user_name = student.name
+
+    # ---- ID scan / Student Session ------------------------------------------
 
     async def start_session(self, user_barcode: str) -> list[BorrowedItem]:
-        """Called after a user ID is scanned. Loads and caches their items."""
+        """Called after a user is selected. Loads and caches their items."""
         self.current_user_barcode = user_barcode
         self.user_items = await self._backend_get_user_items(user_barcode)
         return self.user_items
@@ -182,7 +200,6 @@ class SessionManager:
 
         payload: UserInfoPayload = {
             "name": self.current_user_name,
-            "user_id": user_barcode,
             "email": self.current_user_email,
             "item_id": item_id,
             "borrowed_date": datetime.now(),
@@ -219,7 +236,6 @@ class SessionManager:
 
         payload: UserInfoPayload = {
             "name": self.current_user_name,
-            "user_id": user_barcode,
             "email": self.current_user_email,
             "item_id": item_id,
             "borrowed_date": borrowed_at,
@@ -256,7 +272,6 @@ class SessionManager:
 
         payload: UserInfoPayload = {
             "name": self.current_user_name,
-            "user_id": user_barcode,
             "email": self.current_user_email,
             "item_id": item_id,
             "borrowed_date": borrowed_at,

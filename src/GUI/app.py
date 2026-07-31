@@ -8,7 +8,8 @@ import customtkinter as ctk
 
 from GUI import gui_constants as const
 from GUI.session_manager import SessionManager
-from GUI.ScanIDPage import ScanIDPage
+from GUI.HomePage import HomePage
+from GUI.SelectUserPage import SelectUserPage
 from GUI.BorrowedItemsPage import BorrowedItemsPage
 from GUI.BorrowPage import ConfirmBorrowPage
 from GUI.ReturnPage import ConfirmReturnPage
@@ -47,7 +48,8 @@ class App(ctk.CTk):
         # Build pages
         self.frames = {}
         for F in (
-            ScanIDPage,
+            HomePage,
+            SelectUserPage,
             BorrowedItemsPage,
             ConfirmBorrowPage,
             ConfirmReturnPage,
@@ -63,7 +65,7 @@ class App(ctk.CTk):
                 self.frames["InvalidItemPage"] = frame
             frame.place(relx=0, rely=0, relwidth=1, relheight=1)
 
-        self.current_page_name: str = "ScanIDPage"
+        self.current_page_name: str = "HomePage"
 
         # Wire up simulated barcode HID scanner entry and window resize scaling
         self._barcode_buffer = ""
@@ -80,7 +82,7 @@ class App(ctk.CTk):
         threading.Thread(target=self.loop.run_forever, daemon=True).start()
 
         # Show initial page
-        self.show_frame("ScanIDPage")
+        self.show_frame("HomePage")
 
     def _on_window_resize(self, event) -> None:
         """Dynamically update app scale factor when main window is resized."""
@@ -184,13 +186,13 @@ class App(ctk.CTk):
     # Session management
 
     def reset_session(self) -> None:
-        """Clear all session state and return to ScanIDPage."""
+        """Clear all session state and return to HomePage."""
         self.session.reset()
         self._is_processing_scan = False
         if self._timeout_job is not None:
             self.after_cancel(self._timeout_job)
             self._timeout_job = None
-        self.show_frame("ScanIDPage")
+        self.show_frame("HomePage")
 
     def start_final_confirmation(self) -> None:
         """Show FinalConfirmationPage, then reset after the dismiss delay."""
@@ -198,7 +200,7 @@ class App(ctk.CTk):
         self.after(const.FINAL_CONFIRM_DISMISS_MS, self.reset_session)
 
     def show_invalid_user_page(self) -> None:
-        """Show InvalidUserPage for TIMEOUT_DISMISS_MS, then return to ScanIDPage."""
+        """Show InvalidUserPage for TIMEOUT_DISMISS_MS, then return to HomePage."""
         self.show_frame("InvalidUserPage")
         self.after(const.TIMEOUT_DISMISS_MS, self.reset_session)
 
@@ -237,7 +239,7 @@ class App(ctk.CTk):
         """Route a completed barcode scan based on the currently visible page."""
         current = self._current_page_name()
 
-        if current == "ScanIDPage":
+        if current in ("ScanIDPage", "SelectUserPage"):
             self._handle_id_scan(barcode)
         elif current == "BorrowedItemsPage":
             self._handle_item_scan(barcode)

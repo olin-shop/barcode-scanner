@@ -4,7 +4,7 @@ from PIL import Image
 from GUI import gui_constants as const
 
 # =====================================================
-# PAGE 6: SESSION TIMEOUT
+# SESSION TIMEOUT PAGE
 # =====================================================
 
 class SessionTimeoutPage(ctk.CTkFrame):

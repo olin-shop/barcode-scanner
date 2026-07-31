@@ -8,19 +8,16 @@ import customtkinter as ctk
 from GUI import gui_constants as const
 
 
-def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ctk.CTkToplevel:
+# --- Shared Popup Helper ---
+def _create_popup_base(
+    text: str,
+    min_width: int,
+    parent: Optional[ctk.CTk | ctk.CTkFrame] = None
+) -> tuple[ctk.CTkToplevel, ctk.CTkFrame]:
     """
-    Displays a centered, frameless popup window with rounded corners containing
-    the input text argument and a 'Close' button bottom-center.
-
-    Parameters
-    ----------
-    text : str
-        The message text to display inside the popup.
-    parent : ctk.CTk | ctk.CTkFrame, optional
-        The parent window or frame to center the popup over. If omitted,
-        the root/active window will be resolved automatically.
+    Creates and positions a centered, frameless top-level popup window.
     """
+    # Resolve parent window instance
     if parent is None:
         master = None
     elif hasattr(parent, "winfo_toplevel"):
@@ -31,13 +28,14 @@ def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ct
     if master is not None:
         master.update_idletasks()
 
+    # Create top-level window configuration
     popup = ctk.CTkToplevel(master)
     popup.withdraw()
     popup.overrideredirect(True)
     popup.attributes("-topmost", True)
     popup.configure(fg_color=const.BG_WHITE)
 
-    # Outer container frame for rounded corners and border styling
+    # Outer container frame with border styling
     container = ctk.CTkFrame(
         popup,
         corner_radius=16,
@@ -47,7 +45,7 @@ def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ct
     )
     container.pack(fill="both", expand=True)
 
-    # Message text label
+    # Message text display label
     label = ctk.CTkLabel(
         container,
         text=text,
@@ -58,7 +56,47 @@ def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ct
     )
     label.pack(pady=(20, 15), padx=20, expand=True)
 
-    # Close button bottom-center
+    # Calculate centered screen coordinates relative to master
+    popup.update_idletasks()
+    width = max(min_width, container.winfo_reqwidth() + 20)
+    height = max(160, container.winfo_reqheight() + 10)
+
+    if master is not None:
+        root_x = master.winfo_x()
+        root_y = master.winfo_y()
+        root_w = master.winfo_width()
+        root_h = master.winfo_height()
+
+        x = root_x + (root_w // 2) - (width // 2)
+        y = root_y + (root_h // 2) - (height // 2)
+    else:
+        x = 200
+        y = 200
+
+    popup.geometry(f"{width}x{height}+{x}+{y}")
+    popup.deiconify()
+    popup.update()
+
+    def safe_grab():
+        if popup.winfo_exists():
+            try:
+                popup.grab_set()
+            except Exception:
+                pass
+
+    popup.after(10, safe_grab)
+    return popup, container
+
+
+# --- Single Action Alert Popup ---
+def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ctk.CTkToplevel:
+    """
+    Displays a centered, frameless popup window containing an alert message and a 'Close' button.
+    """
+    # Create base popup window
+    popup, container = _create_popup_base(text, min_width=320, parent=parent)
+
+    # Add single Close button at bottom-center
     close_btn = ctk.CTkButton(
         container,
         text="Close",
@@ -72,39 +110,10 @@ def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ct
     )
     close_btn.pack(side="bottom", pady=(0, 15), anchor="center")
 
-    # Center the popup window relative to master
-    popup.update_idletasks()
-    width = max(320, container.winfo_reqwidth() + 20)
-    height = max(160, container.winfo_reqheight() + 10)
-
-    if master is not None:
-        root_x = master.winfo_x()
-        root_y = master.winfo_y()
-        root_w = master.winfo_width()
-        root_h = master.winfo_height()
-
-        x = root_x + (root_w // 2) - (width // 2)
-        y = root_y + (root_h // 2) - (height // 2)
-    else:
-        x = 200
-        y = 200
-
-    popup.geometry(f"{width}x{height}+{x}+{y}")
-    popup.deiconify()
-    popup.update()
-
-    def safe_grab():
-        if popup.winfo_exists():
-            try:
-                popup.grab_set()
-            except Exception:
-                pass
-
-    popup.after(10, safe_grab)
-
     return popup
 
 
+# --- Two-Choice Confirmation Popup ---
 def show_confirm_popup(
     text: str,
     confirm_text: str,
@@ -114,62 +123,12 @@ def show_confirm_popup(
     confirm_hover_color: Optional[str] = None,
 ) -> ctk.CTkToplevel:
     """
-    Displays a centered, frameless popup window with two buttons: a confirmation
-    button and a 'Cancel' button.
-
-    Parameters
-    ----------
-    text : str
-        The message text to display inside the popup.
-    confirm_text : str
-        The text to display on the confirmation button.
-    on_confirm : Callable[[], None]
-        Callback function executed when the confirmation button is clicked.
-    parent : ctk.CTk | ctk.CTkFrame, optional
-        The parent window or frame to center the popup over.
-    confirm_color : str, optional
-        Foreground button color for the confirmation button. Defaults to OLIN_PINK.
-    confirm_hover_color : str, optional
-        Hover color for the confirmation button. Defaults to MISSING_RED_HOVER.
+    Displays a centered popup window with two choices: a confirmation button and a 'Cancel' button.
     """
-    if parent is None:
-        master = None
-    elif hasattr(parent, "winfo_toplevel"):
-        master = parent.winfo_toplevel()
-    else:
-        master = parent
+    # Create base popup window
+    popup, container = _create_popup_base(text, min_width=340, parent=parent)
 
-    if master is not None:
-        master.update_idletasks()
-
-    popup = ctk.CTkToplevel(master)
-    popup.withdraw()
-    popup.overrideredirect(True)
-    popup.attributes("-topmost", True)
-    popup.configure(fg_color=const.BG_WHITE)
-
-    # Outer container frame for rounded corners and border styling
-    container = ctk.CTkFrame(
-        popup,
-        corner_radius=16,
-        border_width=2,
-        border_color=const.BORDER_BLUE,
-        fg_color=const.BG_WHITE
-    )
-    container.pack(fill="both", expand=True)
-
-    # Message text label
-    label = ctk.CTkLabel(
-        container,
-        text=text,
-        font=const.FONT_POPUP,
-        text_color=const.DARK_BLUE_TEXT,
-        wraplength=280,
-        justify="center"
-    )
-    label.pack(pady=(20, 15), padx=20, expand=True)
-
-    # Buttons frame bottom-center
+    # Container frame for action buttons
     btn_frame = ctk.CTkFrame(container, fg_color="transparent")
     btn_frame.pack(side="bottom", pady=(0, 15), anchor="center")
 
@@ -177,6 +136,7 @@ def show_confirm_popup(
         popup.destroy()
         on_confirm()
 
+    # Confirm action button
     confirm_btn = ctk.CTkButton(
         btn_frame,
         text=confirm_text,
@@ -190,6 +150,7 @@ def show_confirm_popup(
     )
     confirm_btn.pack(side="left", padx=8)
 
+    # Cancel action button
     cancel_btn = ctk.CTkButton(
         btn_frame,
         text="Cancel",
@@ -203,34 +164,5 @@ def show_confirm_popup(
     )
     cancel_btn.pack(side="left", padx=8)
 
-    # Center the popup window relative to master
-    popup.update_idletasks()
-    width = max(340, container.winfo_reqwidth() + 20)
-    height = max(160, container.winfo_reqheight() + 10)
-
-    if master is not None:
-        root_x = master.winfo_x()
-        root_y = master.winfo_y()
-        root_w = master.winfo_width()
-        root_h = master.winfo_height()
-
-        x = root_x + (root_w // 2) - (width // 2)
-        y = root_y + (root_h // 2) - (height // 2)
-    else:
-        x = 200
-        y = 200
-
-    popup.geometry(f"{width}x{height}+{x}+{y}")
-    popup.deiconify()
-    popup.update()
-
-    def safe_grab():
-        if popup.winfo_exists():
-            try:
-                popup.grab_set()
-            except Exception:
-                pass
-
-    popup.after(10, safe_grab)
-
     return popup
+

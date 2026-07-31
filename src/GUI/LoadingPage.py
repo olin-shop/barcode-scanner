@@ -5,7 +5,7 @@ from PIL import Image
 from GUI import gui_constants as const
 
 # =====================================================
-# PAGE: LOADING SCREEN
+# LOADING PAGE
 # =====================================================
 
 class LoadingPage(ctk.CTkFrame):
@@ -66,17 +66,22 @@ class LoadingPage(ctk.CTkFrame):
         self.dots_label.pack(side="left")
 
         # Canvas for the dual 70-degree slanted rhombus progress animation
-        self.canvas_width = 870
+        self.canvas_width = 800
         self.canvas_height = 30
         self.anim_canvas = ctk.CTkCanvas(
-            center_frame,
-            width=self.canvas_width,
+            card,
             height=self.canvas_height,
             bg=const.BG_WHITE,
             highlightthickness=0,
             bd=0
         )
-        self.anim_canvas.pack(side="top")
+        self.anim_canvas.place(relx=0.5, rely=0.65, relwidth=0.995, anchor="center")
+
+        def _on_canvas_configure(event=None) -> None:
+            if event and event.width > 1:
+                self.canvas_width = event.width
+
+        self.anim_canvas.bind("<Configure>", _on_canvas_configure)
 
         self._dots = 3
         self._dots_timer_counter = 0

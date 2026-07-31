@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # =====================================================
-# PAGE 2: BORROWED ITEMS PAGE
+# BORROWED ITEMS PAGE
 # =====================================================
 
 class BorrowedItemsPage(ctk.CTkFrame):
@@ -141,8 +141,33 @@ class BorrowedItemsPage(ctk.CTkFrame):
             text_color=const.OLIN_PINK
         ).pack(side="bottom", pady=(5, 30))
 
+        # Home Button in bottom right corner (transparent background, text changes to dark blue on hover)
+        self.home_button = ctk.CTkButton(
+            self,
+            text="HOME",
+            font=const.FONT_BUTTON,
+            fg_color="transparent",
+            hover=False,
+            text_color=const.OLIN_BLUE,
+            corner_radius=0,
+            width=80,
+            height=36,
+            command=self._on_home_clicked
+        )
+        self.home_button.place(relx=0.96, rely=0.97, anchor="se")
+        self.home_button.bind("<Enter>", lambda e: self.home_button.configure(text_color=const.DARK_BLUE_TEXT))
+        self.home_button.bind("<Leave>", lambda e: self.home_button.configure(text_color=const.OLIN_BLUE))
+
         # Internal state: maps item_name -> item_barcode for the current session
         self._item_barcodes: dict[str, str] = {}
+
+    def _on_home_clicked(self) -> None:
+        """Navigates back to HomePage and resets session."""
+        app = self.winfo_toplevel()
+        if hasattr(app, "reset_session"):
+            app.reset_session()
+        elif hasattr(app, "show_frame"):
+            app.show_frame("HomePage")
 
     def load(self, items: list[BorrowedItem], user_name: str | None = None) -> None:
         """
@@ -238,3 +263,12 @@ class BorrowedItemsPage(ctk.CTkFrame):
             self._render(app.session.user_items)
         # Stay on BorrowedItemsPage - reset the session timer
         app.show_frame("BorrowedItemsPage")
+
+    def update_scale(self, scale: float) -> None:
+        """Dynamically scale Home button and layout components on window resize."""
+        if hasattr(self, "home_button"):
+            self.home_button.configure(
+                font=(const.FONT_FAMILY, max(12, int(20 * scale)), "bold"),
+                width=max(60, int(110 * scale)),
+                height=max(28, int(44 * scale))
+            )

@@ -10,7 +10,7 @@ import customtkinter as ctk
 from conftest import requires_gui
 from backend.backend_types import BorrowedItem
 from GUI.app import App
-from GUI.ScanIDPage import ScanIDPage
+from GUI.SelectUserPage import SelectUserPage as ScanIDPage
 from GUI.BorrowedItemsPage import BorrowedItemsPage
 from GUI.BorrowPage import ConfirmBorrowPage
 from GUI.ReturnPage import ConfirmReturnPage
@@ -36,9 +36,10 @@ def gui_app():
 
 @requires_gui
 def test_app_initialization(gui_app: App) -> None:
-    """Verifies App shell instantiates, registers all 7 pages, and sets default ScanIDPage."""
+    """Verifies App shell instantiates, registers all pages, and sets default HomePage."""
     expected_page_names = {
-        "ScanIDPage",
+        "HomePage",
+        "SelectUserPage",
         "BorrowedItemsPage",
         "ConfirmBorrowPage",
         "ConfirmReturnPage",
@@ -51,7 +52,7 @@ def test_app_initialization(gui_app: App) -> None:
     }
 
     assert set(gui_app.frames.keys()) == expected_page_names
-    assert gui_app._current_page_name() == "ScanIDPage"
+    assert gui_app._current_page_name() == "HomePage"
 
 
 @requires_gui
@@ -61,21 +62,21 @@ def test_app_show_frame_and_timeout_timer(gui_app: App) -> None:
     gui_app.show_frame("BorrowedItemsPage")
     assert gui_app._timeout_job is not None
 
-    # Switch to ScanIDPage - should cancel timeout job
-    gui_app.show_frame("ScanIDPage")
+    # Switch to SessionTimeoutPage - should cancel timeout job
+    gui_app.show_frame("SessionTimeoutPage")
     assert gui_app._timeout_job is None
 
 
 @requires_gui
 def test_app_reset_session(gui_app: App) -> None:
-    """Verifies reset_session resets SessionManager state and returns to ScanIDPage."""
+    """Verifies reset_session resets SessionManager state and returns to HomePage."""
     gui_app.session.current_user_barcode = "USER123"
     gui_app.show_frame("BorrowedItemsPage")
 
     gui_app.reset_session()
 
     assert gui_app.session.current_user_barcode is None
-    assert gui_app._current_page_name() == "ScanIDPage"
+    assert gui_app._current_page_name() == "HomePage"
 
 
 @requires_gui
@@ -104,12 +105,12 @@ def test_barcode_key_event_routing(gui_app: App, mocker: MockerFixture) -> None:
 
 @requires_gui
 def test_dispatch_barcode_handlers(gui_app: App, mocker: MockerFixture) -> None:
-    """Verifies _dispatch_barcode routes ID scan on ScanIDPage and item scan on BorrowedItemsPage."""
+    """Verifies _dispatch_barcode routes ID scan on SelectUserPage and item scan on BorrowedItemsPage."""
     mock_handle_id = mocker.patch.object(gui_app, "_handle_id_scan")
     mock_handle_item = mocker.patch.object(gui_app, "_handle_item_scan")
 
-    # On ScanIDPage
-    gui_app.show_frame("ScanIDPage")
+    # On SelectUserPage
+    gui_app.show_frame("SelectUserPage")
     gui_app._dispatch_barcode("ID_BARCODE")
     mock_handle_id.assert_called_once_with("ID_BARCODE")
 
@@ -164,7 +165,7 @@ def test_loading_page_dual_rhombus_canvas_initialization(gui_app: App) -> None:
     from GUI.LoadingPage import LoadingPage
     page: LoadingPage = gui_app.frames["LoadingPage"]
 
-    assert page.canvas_width == 870
+    assert page.canvas_width == 800
     assert page.canvas_height == 30
     assert page._shape_width == 400
     assert page._shape2_length == 600
@@ -211,3 +212,59 @@ def test_on_item_looked_up_already_borrowed_empty_name(gui_app: App, mocker: Moc
     mock_invalid.assert_not_called()
     assert "already borrowed" in mock_popup.call_args[0][0].lower()
     assert gui_app._current_page_name() == "BorrowedItemsPage"
+
+
+@requires_gui
+def test_select_user_page_search_and_selection(gui_app: App, mocker: MockerFixture) -> None:
+    """Verifies search entry filters list, selecting student enables Next button, and clicking Next starts session."""
+    from backend.student_roster import roster, StudentRecord
+    roster.students = [StudentRecord("Charlie Brown", "cbrown@olin.edu", "2024")]
+
+    mocker.patch.object(gui_app, "_handle_id_scan")
+    select_page = gui_app.frames["SelectUserPage"]
+    select_page.load_students()
+
+    assert select_page.next_button.cget("state") == "disabled"
+
+    # Type query to filter
+    select_page.search_entry.insert(0, "Charlie")
+    select_page._on_type_search()
+
+    assert len(select_page._filtered_students) == 1
+    assert select_page._filtered_students[0].name == "Charlie Brown"
+
+    # Select student from dropdown
+    select_page._select_student(select_page._filtered_students[0])
+    assert select_page.next_button.cget("state") == "normal"
+    assert select_page.search_entry.get() == "Charlie Brown"
+
+    # Click Next
+    select_page._on_next_clicked()
+    assert gui_app.session.current_user_name == "Charlie Brown"
+    gui_app._handle_id_scan.assert_called_once_with("cbrown@olin.edu")
+
+
+@requires_gui
+def test_select_user_page_home_button(gui_app: App) -> None:
+    """Verifies clicking Home button on SelectUserPage resets session and returns to HomePage."""
+    gui_app.show_frame("SelectUserPage")
+    assert gui_app._current_page_name() == "SelectUserPage"
+
+    select_page = gui_app.frames["SelectUserPage"]
+    select_page._on_home_clicked()
+
+    assert gui_app._current_page_name() == "HomePage"
+
+
+@requires_gui
+def test_borrowed_items_page_home_button(gui_app: App) -> None:
+    """Verifies clicking Home button on BorrowedItemsPage resets session and returns to HomePage."""
+    gui_app.session.current_user_name = "Alice Smith"
+    gui_app.show_frame("BorrowedItemsPage")
+    assert gui_app._current_page_name() == "BorrowedItemsPage"
+
+    borrowed_page = gui_app.frames["BorrowedItemsPage"]
+    borrowed_page._on_home_clicked()
+
+    assert gui_app.session.current_user_name == ""
+    assert gui_app._current_page_name() == "HomePage"

@@ -12,7 +12,7 @@ import customtkinter as ctk
 from conftest import requires_gui
 from backend.backend_types import BorrowedItem
 from GUI.app import App
-from GUI.ScanIDPage import ScanIDPage
+from GUI.SelectUserPage import SelectUserPage as ScanIDPage
 from GUI.BorrowedItemsPage import BorrowedItemsPage
 from GUI.session_manager import SessionManager
 
