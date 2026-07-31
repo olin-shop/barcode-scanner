@@ -25,7 +25,6 @@ class SessionManager:
     """
 
     def __init__(self) -> None:
-        self.selected_category: str | None = None
         self.selected_student: Any = None
         self.current_user_barcode: str | None = None
         self.current_user_name: str = ""
@@ -37,16 +36,11 @@ class SessionManager:
     def reset(self) -> None:
         """Clear all session state, ready for the next user."""
         logger.info("Resetting session (previous user=%s)", self.current_user_barcode)
-        self.selected_category = None
         self.selected_student = None
         self.current_user_barcode = None
         self.current_user_name = ""
         self.current_user_email = ""
         self.user_items = []
-
-    def set_selected_category(self, category: str) -> None:
-        """Sets the selected enrollment year or category for user selection."""
-        self.selected_category = category
 
     def select_student(self, student: Any) -> None:
         """Selects a student record and initializes user details using email as unique identifier."""

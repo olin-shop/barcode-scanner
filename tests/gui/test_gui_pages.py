@@ -218,7 +218,7 @@ def test_on_item_looked_up_already_borrowed_empty_name(gui_app: App, mocker: Moc
 def test_select_user_page_search_and_selection(gui_app: App, mocker: MockerFixture) -> None:
     """Verifies search entry filters list, selecting student enables Next button, and clicking Next starts session."""
     from backend.student_roster import roster, StudentRecord
-    roster.students = [StudentRecord("Charlie Brown", "cbrown@olin.edu", "2024")]
+    roster.students = [StudentRecord("Charlie Brown", "cbrown@olin.edu")]
 
     mocker.patch.object(gui_app, "_handle_id_scan")
     select_page = gui_app.frames["SelectUserPage"]
