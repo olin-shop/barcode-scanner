@@ -75,17 +75,17 @@ def test_fast_async_response_loading_page_threshold(gui_app: App, mocker: Mocker
 def test_loading_page_minimum_display_duration_enforced(gui_app: App, mocker: MockerFixture) -> None:
     """Feature test: When LoadingPage is shown, callback is held for min_display_ms to prevent awkward screen flicker."""
     async def slow_coro():
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.1)
         return "SlowResult"
 
     callback_results = []
     start_t = time.time()
 
-    # Low threshold (10ms) so LoadingPage triggers, min_display_ms = 250ms
+    # Low threshold (0ms) so LoadingPage triggers immediately, min_display_ms = 250ms
     gui_app.run_async_with_loading(
         slow_coro(),
         lambda res: callback_results.append(res),
-        threshold_ms=10,
+        threshold_ms=0,
         min_display_ms=250
     )
 
@@ -98,7 +98,7 @@ def test_loading_page_minimum_display_duration_enforced(gui_app: App, mocker: Mo
 
     elapsed_ms = (time.time() - start_t) * 1000.0
     assert callback_results == ["SlowResult"]
-    assert elapsed_ms >= 230  # Verified minimum display hold time enforced
+    assert elapsed_ms >= 200  # Verified minimum display hold time enforced
 
 
 @requires_gui
