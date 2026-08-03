@@ -55,7 +55,7 @@ class InvalidCardPage(ctk.CTkFrame):
         self.sub_label = ctk.CTkLabel(
             card,
             text="Please try again",
-            font=const.FONT_CLOSING_SESSION,
+            font=const.FONT_SUBTITLE,
             text_color=const.MUTED_BLUE_TEXT
         )
         self.sub_label.place(relx=0.5, rely=0.72, anchor="center")
@@ -85,4 +85,4 @@ class InvalidItemIDPage(InvalidCardPage):
 
 
 # Backwards compatibility alias
-InvalidItemPage = InvalidItemIDPage
+InvalidItemPage = InvalidItemIDPage

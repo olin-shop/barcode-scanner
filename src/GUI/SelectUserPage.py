@@ -1,3 +1,4 @@
+import math
 import customtkinter as ctk
 from PIL import Image
 
@@ -66,12 +67,12 @@ class SelectUserPage(ctk.CTkFrame):
         )
         self.search_container.place(relx=0.5, rely=0.42, anchor="center")
 
-        # Entry for typing name with light grey placeholder
+        # Entry for typing name with clear light grey placeholder
         self.search_entry = ctk.CTkEntry(
             self.search_container,
             placeholder_text="Enter name here",
-            placeholder_text_color="#A0A0A0",
-            font=const.FONT_BUTTON,
+            placeholder_text_color="#7A8B99",
+            font=(const.FONT_FAMILY, 24, "bold"),
             fg_color="transparent",
             border_width=0,
             text_color=const.DARK_BLUE_TEXT,
@@ -82,19 +83,58 @@ class SelectUserPage(ctk.CTkFrame):
         self.search_entry.bind("<KeyRelease>", self._on_type_search)
         self.search_entry.bind("<FocusIn>", lambda e: self._show_dropdown())
 
-        # Drop-down Arrow Button on the right
+        self.current_arrow_frame_idx: int = 0
+        self.is_arrow_hovered: bool = False
+        self._arrow_anim_job = None
+        self.blue_arrow_frames: list[ctk.CTkImage] = []
+        self.dark_arrow_frames: list[ctk.CTkImage] = []
+
+        # Drop-down Arrow Button precomputed frames (21 steps for smooth 180-deg ease-in-out rotation)
+        try:
+            blue_arrow_path = const.STATIC_DIR / "olin_arrow_blue.png"
+            dark_arrow_path = const.STATIC_DIR / "olin_arrow_dark_blue.png"
+            if blue_arrow_path.exists() and dark_arrow_path.exists():
+                blue_img = Image.open(blue_arrow_path)
+                dark_img = Image.open(dark_arrow_path)
+                num_steps = 20
+                for i in range(num_steps + 1):
+                    p = i / float(num_steps)
+                    # Cosine easing: slowest at start/end, fastest in middle
+                    factor = 0.5 * (1.0 - math.cos(math.pi * p))
+                    angle = 180.0 * factor
+
+                    b_rot = blue_img.rotate(angle, resample=Image.Resampling.BICUBIC)
+                    d_rot = dark_img.rotate(angle, resample=Image.Resampling.BICUBIC)
+
+                    self.blue_arrow_frames.append(
+                        ctk.CTkImage(light_image=b_rot, dark_image=b_rot, size=(22, 24))
+                    )
+                    self.dark_arrow_frames.append(
+                        ctk.CTkImage(light_image=d_rot, dark_image=d_rot, size=(22, 24))
+                    )
+        except Exception as e:
+            print(f"[SelectUserPage] Arrow rotation pre-render exception: {e}")
+            self.blue_arrow_frames = []
+            self.dark_arrow_frames = []
+
+        initial_img = self.blue_arrow_frames[0] if self.blue_arrow_frames else None
+
         self.arrow_button = ctk.CTkButton(
             self.search_container,
-            text="▼",
-            font=(const.FONT_FAMILY, 14, "bold"),
+            text="" if initial_img else "▼",
+            image=initial_img,
+            font=(const.FONT_FAMILY, 16, "bold"),
             fg_color="transparent",
-            hover_color=const.LIGHT_BLUE,
+            hover_color=const.BG_WHITE,
             text_color=const.DARK_BLUE_TEXT,
             width=38,
-            height=48,
+            height=45,
             command=self._toggle_dropdown
         )
         self.arrow_button.place(relx=0.98, rely=0.5, anchor="e")
+
+        self.arrow_button.bind("<Enter>", self._on_arrow_enter)
+        self.arrow_button.bind("<Leave>", self._on_arrow_leave)
 
         # Scrollable Dropdown Frame for displaying filtered names
         self.dropdown_frame = ctk.CTkScrollableFrame(
@@ -112,13 +152,13 @@ class SelectUserPage(ctk.CTkFrame):
         # Next Button (disabled initially until a name is selected)
         self.next_button = ctk.CTkButton(
             card,
-            text="Next",
+            text="NEXT",
             font=const.FONT_BUTTON,
             fg_color=const.CONFIRM_BLUE,
             hover_color=const.CONFIRM_BLUE_HOVER,
             text_color=const.BG_WHITE,
-            corner_radius=12,
-            width=220,
+            corner_radius=34,
+            width=170,
             height=54,
             state="disabled",
             command=self._on_next_clicked
@@ -139,7 +179,7 @@ class SelectUserPage(ctk.CTkFrame):
             command=self._on_home_clicked
         )
         self.home_button.place(relx=0.98, rely=0.98, anchor="se")
-        self.home_button.bind("<Enter>", lambda e: self.home_button.configure(text_color=const.DARK_BLUE_TEXT))
+        self.home_button.bind("<Enter>", lambda e: self.home_button.configure(text_color=const.OLIN_BLUE_HOVER))
         self.home_button.bind("<Leave>", lambda e: self.home_button.configure(text_color=const.OLIN_BLUE))
 
         # Load all students
@@ -170,16 +210,60 @@ class SelectUserPage(ctk.CTkFrame):
             self._on_type_search()
             self._show_dropdown()
 
+    def _on_arrow_enter(self, event=None) -> None:
+        self.is_arrow_hovered = True
+        self._update_arrow_display()
+
+    def _on_arrow_leave(self, event=None) -> None:
+        self.is_arrow_hovered = False
+        self._update_arrow_display()
+
+    def _update_arrow_display(self) -> None:
+        if not hasattr(self, "arrow_button") or not self.arrow_button.winfo_exists():
+            return
+        if self.blue_arrow_frames and self.dark_arrow_frames:
+            frames = self.dark_arrow_frames if self.is_arrow_hovered else self.blue_arrow_frames
+            idx = max(0, min(self.current_arrow_frame_idx, len(frames) - 1))
+            self.arrow_button.configure(image=frames[idx])
+
+    def _start_arrow_animation(self, target_idx: int) -> None:
+        """Starts smooth ease-in-out rotation animation toward target_idx."""
+        if self._arrow_anim_job is not None:
+            try:
+                self.after_cancel(self._arrow_anim_job)
+            except Exception:
+                pass
+            self._arrow_anim_job = None
+        self._animate_arrow_step(target_idx)
+
+    def _animate_arrow_step(self, target_idx: int) -> None:
+        if not self.winfo_exists():
+            return
+
+        if self.current_arrow_frame_idx < target_idx:
+            self.current_arrow_frame_idx += 1
+        elif self.current_arrow_frame_idx > target_idx:
+            self.current_arrow_frame_idx -= 1
+
+        self._update_arrow_display()
+
+        if self.current_arrow_frame_idx != target_idx:
+            self._arrow_anim_job = self.after(12, lambda: self._animate_arrow_step(target_idx))
+        else:
+            self._arrow_anim_job = None
+
     def _show_dropdown(self) -> None:
-        """Shows the dropdown list."""
+        """Shows the dropdown list and rotates arrow 180 degrees."""
         self.dropdown_frame.place(relx=0.5, rely=0.72, anchor="center")
         self.dropdown_frame.lift()
         self._dropdown_open = True
+        self._start_arrow_animation(20)
 
     def _hide_dropdown(self) -> None:
-        """Hides the dropdown list."""
+        """Hides the dropdown list and rotates arrow back to 0 degrees."""
         self.dropdown_frame.place_forget()
         self._dropdown_open = False
+        self._start_arrow_animation(0)
 
     def _on_type_search(self, event=None) -> None:
         """Filters names in the scrollable dropdown list based on typed query."""
@@ -286,3 +370,15 @@ class SelectUserPage(ctk.CTkFrame):
             w = max(60, int(160 * scale))
             h = max(22, int(60 * scale))
             self.logo_image.configure(size=(w, h))
+
+        if hasattr(self, "blue_arrow_frames"):
+            w = max(10, int(22 * scale))
+            h = max(12, int(24 * scale))
+            for img in self.blue_arrow_frames:
+                img.configure(size=(w, h))
+
+        if hasattr(self, "dark_arrow_frames"):
+            w = max(10, int(22 * scale))
+            h = max(12, int(24 * scale))
+            for img in self.dark_arrow_frames:
+                img.configure(size=(w, h))

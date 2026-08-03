@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 import math
 from typing import TYPE_CHECKING
@@ -29,8 +30,19 @@ class BorrowedItemsPage(ctk.CTkFrame):
 
         self.configure(fg_color=const.BG_LIGHT_BLUE)
 
+        # Central white card container matching every other page (lowered top below top banner)
+        card = ctk.CTkFrame(
+            self,
+            corner_radius=24,
+            border_width=2,
+            border_color=const.BORDER_BLUE,
+            fg_color=const.BG_WHITE
+        )
+        card.place(relx=0.5, rely=0.56, relwidth=0.88, relheight=0.7, anchor="center")
+        self.card = card
+
         # Header banner canvas extending 80% across with a 70-degree forward-slash right edge
-        banner_height = 75
+        banner_height = 78
         self.banner_canvas = ctk.CTkCanvas(
             self,
             bg=const.BG_LIGHT_BLUE,
@@ -68,35 +80,34 @@ class BorrowedItemsPage(ctk.CTkFrame):
         self.banner_canvas.bind("<Configure>", _draw_banner)
 
         # Header title text rendered over the banner in crisp white
-        ctk.CTkLabel(
+        self.header_label = ctk.CTkLabel(
             self,
             text="Current Borrowed Items",
-            font=(const.FONT_FAMILY, 30, "bold"),
+            font=const.FONT_HEADING,
             text_color=const.BG_LIGHT_BLUE,
             fg_color=const.OLIN_BLUE_HOVER
-        ).place(x=30, y=banner_height / 2, anchor="w")
+        )
+        self.header_label.place(x=30, y=(banner_height / 2)-2, anchor="w")
 
-        # Large User Name label positioned in the extra space below the top banner
+        # Large User Name label positioned directly on page below top banner
         self.user_name_label = ctk.CTkLabel(
             self,
-            text="",
-            font=(const.FONT_FAMILY, 32, "bold"),
+            text="NAME",
+            font=const.FONT_TITLE,
             text_color=const.DARK_BLUE_TEXT,
             anchor="center"
         )
-        self.user_name_label.pack(pady=(85, 5), padx=25, anchor="center")
+        self.user_name_label.place(relx=0.5, y=100, anchor="center")
+        self.user_name_label.lift()
 
-        # Shortened items list frame moved lower down
+        # Items list frame scrolling seamlessly inside card
         self.scroll_frame = ctk.CTkScrollableFrame(
-            self,
-            width=400,
-            height=160,
-            fg_color=const.BG_WHITE,
-            border_color=const.BORDER_BLUE,
-            border_width=2,
-            corner_radius=16
+            card,
+            fg_color="transparent",
+            border_width=0,
+            corner_radius=0
         )
-        self.scroll_frame.pack(pady=(5, 10), padx=20, fill="both", expand=True)
+        self.scroll_frame.place(relx=0.5, rely=0.42, relwidth=0.94, relheight=0.68, anchor="center")
 
         # Hide visual scrollbar bar and rebalance grid padding so content is perfectly centered
         try:
@@ -134,16 +145,18 @@ class BorrowedItemsPage(ctk.CTkFrame):
         except Exception:
             pass
 
-        ctk.CTkLabel(
-            self,
+        # Pink instruction text placed at bottom of card
+        self.instruction_label = ctk.CTkLabel(
+            card,
             text="Scan an item to borrow or return",
             font=const.FONT_SUBTITLE,
             text_color=const.OLIN_PINK
-        ).pack(side="bottom", pady=(5, 30))
+        )
+        self.instruction_label.place(relx=0.5, rely=0.93, anchor="center")
 
-        # Home Button in bottom right corner (transparent background, text changes to dark blue on hover)
+        # Home Button in bottom right corner of card (exact same placement as SelectUserPage)
         self.home_button = ctk.CTkButton(
-            self,
+            card,
             text="HOME",
             font=const.FONT_BUTTON,
             fg_color="transparent",
@@ -154,8 +167,8 @@ class BorrowedItemsPage(ctk.CTkFrame):
             height=36,
             command=self._on_home_clicked
         )
-        self.home_button.place(relx=0.96, rely=0.97, anchor="se")
-        self.home_button.bind("<Enter>", lambda e: self.home_button.configure(text_color=const.DARK_BLUE_TEXT))
+        self.home_button.place(relx=0.98, rely=0.976, anchor="se")
+        self.home_button.bind("<Enter>", lambda e: self.home_button.configure(text_color=const.OLIN_BLUE_HOVER))
         self.home_button.bind("<Leave>", lambda e: self.home_button.configure(text_color=const.OLIN_BLUE))
 
         # Internal state: maps item_name -> item_barcode for the current session
@@ -176,14 +189,14 @@ class BorrowedItemsPage(ctk.CTkFrame):
         """
         self._item_barcodes = {item.name: item.barcode for item in items}
 
-        if not user_name:
+        if user_name is None:
             session = getattr(self.master, "session", None)
-            if session and getattr(session, "current_user_name", None):
+            if session and getattr(session, "current_user_name", None) is not None:
                 user_name = session.current_user_name
+            else:
+                user_name = ""
 
-        display_name = user_name if user_name else ""
-        self.user_name_label.configure(text=display_name)
-
+        self.user_name_label.configure(text=user_name)
         self._render(items)
 
     def remove_item(self, item_name: str) -> None:
@@ -230,9 +243,8 @@ class BorrowedItemsPage(ctk.CTkFrame):
                 row,
                 text=date_str,
                 font=const.FONT_DATE,
-                text_color=const.MUTED_BLUE_TEXT,
-                anchor="e"
-            ).pack(side="right", padx=(10, 15))
+                text_color=const.MUTED_BLUE_TEXT
+            ).pack(side="right", padx=(0, 10))
 
     def _show_missing_popup(self, item_name: str, item_barcode: str) -> None:
         show_confirm_popup(

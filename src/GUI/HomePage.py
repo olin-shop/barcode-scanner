@@ -45,15 +45,14 @@ class HomePage(ctk.CTkFrame):
         ctk.CTkLabel(
             card,
             text="Want to Borrow an Item?",
-            font=const.FONT_HEADING,
-            text_color=const.DARK_BLUE_TEXT
+            font=const.FONT_HEADING_HUGE,
+            text_color=const.OLIN_BLUE
         ).place(relx=0.5, rely=0.45, anchor="center")
 
         # Subtitle instruction
         ctk.CTkLabel(
             card,
             text="Tap to Start",
-            font=const.FONT_CLOSING_SESSION,
+            font=const.FONT_BODY,
             text_color=const.MUTED_BLUE_TEXT
         ).place(relx=0.5, rely=0.68, anchor="center")
-

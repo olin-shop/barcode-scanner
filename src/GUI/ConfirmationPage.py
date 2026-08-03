@@ -40,13 +40,13 @@ class FinalConfirmationPage(ctk.CTkFrame):
         ctk.CTkLabel(
             card,
             text="Confirmed",
-            font=const.FONT_CONFIRM_HUGE,
+            font=const.FONT_HUGE,
             text_color=const.OLIN_BLUE
         ).place(relx=0.5, rely=0.45, anchor="center")
 
         ctk.CTkLabel(
             card,
             text="Closing session..",
-            font=const.FONT_CLOSING_SESSION,
+            font=const.FONT_BODY,
             text_color=const.MUTED_BLUE_TEXT
         ).place(relx=0.5, rely=0.68, anchor="center")

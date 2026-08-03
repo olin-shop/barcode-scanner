@@ -46,7 +46,7 @@ class ConfirmActionPage(ctk.CTkFrame):
         ctk.CTkLabel(
             card,
             text=title_text,
-            font=const.FONT_HEADING,
+            font=const.FONT_HEADING_HUGE,
             text_color=const.DARK_BLUE_TEXT
         ).pack(pady=(60, 15))
 
@@ -73,11 +73,11 @@ class ConfirmActionPage(ctk.CTkFrame):
             button_frame,
             fg_color=const.CONFIRM_BLUE,
             hover_color=const.CONFIRM_BLUE_HOVER,
-            text="Confirm",
+            text="CONFIRM",
             font=const.FONT_BUTTON,
             width=210,
             height=70,
-            corner_radius=14,
+            corner_radius=34,
             command=self._on_confirm
         ).pack(side="left", padx=20)
 
@@ -86,11 +86,11 @@ class ConfirmActionPage(ctk.CTkFrame):
             button_frame,
             fg_color=const.OLIN_PINK,
             hover_color=const.CANCEL_RED_HOVER,
-            text="Cancel",
+            text="CANCEL",
             font=const.FONT_BUTTON,
             width=210,
             height=70,
-            corner_radius=14,
+            corner_radius=34,
             command=self._on_cancel
         ).pack(side="left", padx=20)
 

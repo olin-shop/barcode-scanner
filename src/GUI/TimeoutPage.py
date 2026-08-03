@@ -29,14 +29,14 @@ class SessionTimeoutPage(ctk.CTkFrame):
         ctk.CTkLabel(
             card,
             text="Session Timed Out",
-            font=const.FONT_TIMEOUT_TITLE,
+            font=const.FONT_HEADING_HUGE,
             text_color=const.DARK_BLUE_TEXT
         ).place(relx=0.5, rely=0.42, anchor="center")
 
         ctk.CTkLabel(
             card,
             text="Returning to start screen..",
-            font=const.FONT_TIMEOUT_SUBTITLE,
+            font=const.FONT_BODY,
             text_color=const.MUTED_BLUE_TEXT
         ).place(relx=0.5, rely=0.62, anchor="center")
 

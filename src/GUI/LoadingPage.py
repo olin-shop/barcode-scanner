@@ -50,7 +50,7 @@ class LoadingPage(ctk.CTkFrame):
         self.loading_label = ctk.CTkLabel(
             self.text_container,
             text="Loading",
-            font=const.FONT_LOADING,
+            font=const.FONT_HEADING_HUGE,
             text_color=const.OLIN_BLUE
         )
         self.loading_label.pack(side="left")
@@ -58,7 +58,7 @@ class LoadingPage(ctk.CTkFrame):
         self.dots_label = ctk.CTkLabel(
             self.text_container,
             text="...",
-            font=const.FONT_LOADING,
+            font=const.FONT_HEADING_HUGE,
             text_color=const.OLIN_BLUE,
             width=60,
             anchor="w"
