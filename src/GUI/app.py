@@ -41,9 +41,11 @@ class App(ctk.CTk):
         # Global Session State
         self.session = SessionManager()
 
-        self._timeout_job = None   # after() handle for the session timer
-        self._slide_job = None     # after() handle for slide transitions
-        self._is_processing_scan = False  # Busy guard to prevent duplicate scan processing
+        self._timeout_job = None  # after() handle for the session timer
+        self._slide_job = None  # after() handle for slide transitions
+        self._is_processing_scan = (
+            False  # Busy guard to prevent duplicate scan processing
+        )
 
         # Build pages
         self.frames = {}
@@ -103,7 +105,7 @@ class App(ctk.CTk):
             if hasattr(frame, "update_scale") and callable(frame.update_scale):
                 try:
                     frame.update_scale(scale)
-                except Exception as e:
+                except (AttributeError, ValueError, TypeError) as e:
                     logger.error("Error scaling frame %s: %s", frame, e)
 
     def _poll_async_queue(self) -> None:
@@ -112,7 +114,7 @@ class App(ctk.CTk):
             while not self._async_queue.empty():
                 callback, result = self._async_queue.get_nowait()
                 callback(result)
-        except Exception as e:
+        except (AttributeError, RuntimeError, ValueError) as e:
             logger.error("Error processing async callback queue: %s", e, exc_info=True)
         finally:
             if self.winfo_exists():
@@ -125,7 +127,7 @@ class App(ctk.CTk):
         if self._slide_job is not None:
             try:
                 self.after_cancel(self._slide_job)
-            except Exception:
+            except (ValueError, KeyError, AttributeError, RuntimeError):
                 pass
             self._slide_job = None
 
@@ -137,7 +139,7 @@ class App(ctk.CTk):
             if name != page_name:
                 try:
                     frame.place(relx=0, rely=0, relwidth=1, relheight=1)
-                except Exception:
+                except (ValueError, KeyError, AttributeError, RuntimeError):
                     pass
 
         target_frame.tkraise()
@@ -174,8 +176,17 @@ class App(ctk.CTk):
             self.after_cancel(self._timeout_job)
             self._timeout_job = None
 
-        if page_name not in ("ScanIDPage", "SessionTimeoutPage", "FinalConfirmationPage", "InvalidUserPage", "InvalidItemPage", "InvalidItemIDPage"):
-            self._timeout_job = self.after(const.SESSION_TIMEOUT_MS, self._on_session_timeout)
+        if page_name not in (
+            "ScanIDPage",
+            "SessionTimeoutPage",
+            "FinalConfirmationPage",
+            "InvalidUserPage",
+            "InvalidItemPage",
+            "InvalidItemIDPage",
+        ):
+            self._timeout_job = self.after(
+                const.SESSION_TIMEOUT_MS, self._on_session_timeout
+            )
 
     def _on_session_timeout(self) -> None:
         logger.info("Session timed out for user=%s", self.session.current_user_barcode)
@@ -207,9 +218,11 @@ class App(ctk.CTk):
     def show_invalid_item_page(self) -> None:
         """Show InvalidItemPage for TIMEOUT_DISMISS_MS, then return to BorrowedItemsPage."""
         self.show_frame("InvalidItemPage")
+
         def _return_to_borrowed():
             if self.current_page_name in ("InvalidItemPage", "InvalidItemIDPage"):
                 self.show_frame("BorrowedItemsPage")
+
         self.after(const.TIMEOUT_DISMISS_MS, _return_to_borrowed)
 
     def display_popup(self, text: str) -> ctk.CTkToplevel:
@@ -252,7 +265,7 @@ class App(ctk.CTk):
             try:
                 if frame.winfo_ismapped():
                     return name
-            except Exception:
+            except (ValueError, KeyError, AttributeError, RuntimeError):
                 logger.debug("Could not check mapped state for %s", name, exc_info=True)
         return None
 
@@ -260,7 +273,10 @@ class App(ctk.CTk):
 
     def _handle_id_scan(self, user_barcode: str) -> None:
         if self._is_processing_scan:
-            logger.warning("Ignoring duplicate ID scan %s; another scan is currently processing.", user_barcode)
+            logger.warning(
+                "Ignoring duplicate ID scan %s; another scan is currently processing.",
+                user_barcode,
+            )
             return
         self._is_processing_scan = True
         logger.info("Scanned user id: %s", user_barcode)
@@ -282,12 +298,17 @@ class App(ctk.CTk):
             logger.warning("Scanned user ID not recognized or get_name returned empty.")
             self.show_invalid_user_page()
             return
-        self.frames["BorrowedItemsPage"].load(items, user_name=self.session.current_user_name)
+        self.frames["BorrowedItemsPage"].load(
+            items, user_name=self.session.current_user_name
+        )
         self.show_frame("BorrowedItemsPage")
 
     def _handle_item_scan(self, item_barcode: str) -> None:
         if self._is_processing_scan:
-            logger.warning("Ignoring duplicate item scan %s; another scan is currently processing.", item_barcode)
+            logger.warning(
+                "Ignoring duplicate item scan %s; another scan is currently processing.",
+                item_barcode,
+            )
             return
         self._is_processing_scan = True
         logger.info("Scanned item id: %s", item_barcode)
@@ -301,7 +322,9 @@ class App(ctk.CTk):
             _on_done,
         )
 
-    def _on_item_looked_up(self, result: tuple[str, bool | None], item_barcode: str) -> None:
+    def _on_item_looked_up(
+        self, result: tuple[str, bool | None], item_barcode: str
+    ) -> None:
         if self._current_page_name() in ("SessionTimeoutPage", "FinalConfirmationPage"):
             logger.info("Ignoring stale item-lookup response; session moved on.")
             return
@@ -309,8 +332,14 @@ class App(ctk.CTk):
         item_name, is_borrowed = result
         if is_borrowed is None:
             display_name = item_name if item_name else f"Item #{item_barcode}"
-            logger.warning("Attempted to borrow item %s (%s) which is already borrowed.", item_barcode, display_name)
-            show_popup(f"Cannot borrow '{display_name}': Item is already borrowed", self)
+            logger.warning(
+                "Attempted to borrow item %s (%s) which is already borrowed.",
+                item_barcode,
+                display_name,
+            )
+            show_popup(
+                f"Cannot borrow '{display_name}': Item is already borrowed", self
+            )
             return
         if not item_name:
             logger.warning("Scanned item ID not recognized: %s", item_barcode)
@@ -323,10 +352,13 @@ class App(ctk.CTk):
             self.frames["ConfirmBorrowPage"].load(item_name, item_barcode)
             self.show_frame("ConfirmBorrowPage")
 
-    def run_async(self, coro: Coroutine[Any, Any, Any], callback: Callable[[Any], None]) -> None:
+    def run_async(
+        self, coro: Coroutine[Any, Any, Any], callback: Callable[[Any], None]
+    ) -> None:
         """
         Submit a coroutine; call callback(result) on the main thread when done.
         """
+
         def _on_done(f: asyncio.Future) -> None:
             try:
                 res = f.result()
@@ -369,7 +401,7 @@ class App(ctk.CTk):
             if loading_job is not None:
                 try:
                     self.after_cancel(loading_job)
-                except Exception:
+                except (ValueError, KeyError, AttributeError, RuntimeError):
                     pass
                 loading_job = None
 

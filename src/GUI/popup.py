@@ -10,9 +10,7 @@ from GUI import gui_constants as const
 
 # --- Shared Popup Helper ---
 def _create_popup_base(
-    text: str,
-    min_width: int,
-    parent: Optional[ctk.CTk | ctk.CTkFrame] = None
+    text: str, min_width: int, parent: Optional[ctk.CTk | ctk.CTkFrame] = None
 ) -> tuple[ctk.CTkToplevel, ctk.CTkFrame]:
     """
     Creates and positions a centered, frameless top-level popup window.
@@ -41,7 +39,7 @@ def _create_popup_base(
         corner_radius=16,
         border_width=2,
         border_color=const.BORDER_BLUE,
-        fg_color=const.BG_WHITE
+        fg_color=const.BG_WHITE,
     )
     container.pack(fill="both", expand=True)
 
@@ -52,7 +50,7 @@ def _create_popup_base(
         font=const.FONT_POPUP,
         text_color=const.DARK_BLUE_TEXT,
         wraplength=280,
-        justify="center"
+        justify="center",
     )
     label.pack(pady=(20, 15), padx=20, expand=True)
 
@@ -81,7 +79,7 @@ def _create_popup_base(
         if popup.winfo_exists():
             try:
                 popup.grab_set()
-            except Exception:
+            except (AttributeError, RuntimeError):
                 pass
 
     popup.after(10, safe_grab)
@@ -89,7 +87,9 @@ def _create_popup_base(
 
 
 # --- Single Action Alert Popup ---
-def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ctk.CTkToplevel:
+def show_popup(
+    text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None
+) -> ctk.CTkToplevel:
     """
     Displays a centered, frameless popup window containing an alert message and a 'Close' button.
     """
@@ -106,7 +106,7 @@ def show_popup(text: str, parent: Optional[ctk.CTk | ctk.CTkFrame] = None) -> ct
         corner_radius=10,
         fg_color=const.OLIN_BLUE,
         hover_color=const.OLIN_BLUE_HOVER,
-        command=popup.destroy
+        command=popup.destroy,
     )
     close_btn.pack(side="bottom", pady=(0, 15), anchor="center")
 
@@ -146,7 +146,7 @@ def show_confirm_popup(
         corner_radius=10,
         fg_color=confirm_color or const.OLIN_PINK,
         hover_color=confirm_hover_color or const.MISSING_RED_HOVER,
-        command=handle_confirm
+        command=handle_confirm,
     )
     confirm_btn.pack(side="left", padx=8)
 
@@ -160,9 +160,8 @@ def show_confirm_popup(
         corner_radius=10,
         fg_color=const.OLIN_BLUE,
         hover_color=const.OLIN_BLUE_HOVER,
-        command=popup.destroy
+        command=popup.destroy,
     )
     cancel_btn.pack(side="left", padx=8)
 
     return popup
-

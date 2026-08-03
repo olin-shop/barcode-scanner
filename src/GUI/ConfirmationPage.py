@@ -1,12 +1,13 @@
+"""
+Final confirmation page.
+"""
+
 import customtkinter as ctk
+from PIL import Image
+
 
 from GUI import gui_constants as const
 
-from PIL import Image
-
-# =====================================================
-# FINAL CONFIRMATION
-# =====================================================
 
 class FinalConfirmationPage(ctk.CTkFrame):
     """
@@ -23,7 +24,7 @@ class FinalConfirmationPage(ctk.CTkFrame):
             corner_radius=24,
             border_width=2,
             border_color=const.BORDER_BLUE,
-            fg_color=const.BG_WHITE
+            fg_color=const.BG_WHITE,
         )
         card.place(relx=0.5, rely=0.5, relwidth=0.88, relheight=0.82, anchor="center")
 
@@ -32,9 +33,13 @@ class FinalConfirmationPage(ctk.CTkFrame):
             logo_path = const.STATIC_DIR / "Olin_Shop_Logo.png"
             if logo_path.exists():
                 logo_img = Image.open(logo_path)
-                self.logo_image = ctk.CTkImage(light_image=logo_img, dark_image=logo_img, size=(160, 60))
-                ctk.CTkLabel(card, image=self.logo_image, text="").place(relx=0.045, rely=0.05, anchor="nw")
-        except Exception:
+                self.logo_image = ctk.CTkImage(
+                    light_image=logo_img, dark_image=logo_img, size=(160, 60)
+                )
+                ctk.CTkLabel(card, image=self.logo_image, text="").place(
+                    relx=0.045, rely=0.05, anchor="nw"
+                )
+        except (OSError, ValueError, AttributeError):
             pass
 
         ctk.CTkLabel(

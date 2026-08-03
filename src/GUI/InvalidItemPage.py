@@ -38,7 +38,7 @@ class InvalidCardPage(ctk.CTkFrame):
                 logo_img = Image.open(logo_path)
                 self.logo_image = ctk.CTkImage(light_image=logo_img, dark_image=logo_img, size=(160, 60))
                 ctk.CTkLabel(card, image=self.logo_image, text="").place(relx=0.045, rely=0.05, anchor="nw")
-        except Exception:
+        except (OSError, ValueError, AttributeError):
             self.logo_image = None
 
         # Main alert title header

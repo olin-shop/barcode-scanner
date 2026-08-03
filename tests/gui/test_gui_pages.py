@@ -3,9 +3,9 @@ Unit tests for App shell and GUI pages in src/GUI/ (app.py, ScanIDPage, Borrowed
 """
 
 from datetime import datetime
+
 import pytest
 from pytest_mock import MockerFixture
-import customtkinter as ctk
 
 from conftest import requires_gui
 from backend.backend_types import BorrowedItem
@@ -23,6 +23,7 @@ def gui_app():
         app = App()
     except Exception:
         import time
+
         time.sleep(0.1)
         app = App()
     app.withdraw()
@@ -163,6 +164,7 @@ def test_on_user_items_loaded_dispatches_user_name(gui_app: App) -> None:
 def test_loading_page_dual_rhombus_canvas_initialization(gui_app: App) -> None:
     """Verifies LoadingPage initializes dual rhombus canvas properties and shape structures."""
     from GUI.LoadingPage import LoadingPage
+
     page: LoadingPage = gui_app.frames["LoadingPage"]
 
     assert page.canvas_width > 0
@@ -187,7 +189,9 @@ def test_confirm_borrow_and_return_page_load(gui_app: App) -> None:
 
 
 @requires_gui
-def test_on_item_looked_up_already_borrowed(gui_app: App, mocker: MockerFixture) -> None:
+def test_on_item_looked_up_already_borrowed(
+    gui_app: App, mocker: MockerFixture
+) -> None:
     """Verifies an already borrowed item (is_borrowed=None) shows a popup and stays on current page."""
     mock_popup = mocker.patch("GUI.app.show_popup")
     gui_app.show_frame("BorrowedItemsPage")
@@ -200,7 +204,9 @@ def test_on_item_looked_up_already_borrowed(gui_app: App, mocker: MockerFixture)
 
 
 @requires_gui
-def test_on_item_looked_up_already_borrowed_empty_name(gui_app: App, mocker: MockerFixture) -> None:
+def test_on_item_looked_up_already_borrowed_empty_name(
+    gui_app: App, mocker: MockerFixture
+) -> None:
     """Verifies an already borrowed item with empty name shows popup and does NOT show InvalidItemPage."""
     mock_popup = mocker.patch("GUI.app.show_popup")
     mock_invalid = mocker.patch.object(gui_app, "show_invalid_item_page")
@@ -215,9 +221,12 @@ def test_on_item_looked_up_already_borrowed_empty_name(gui_app: App, mocker: Moc
 
 
 @requires_gui
-def test_select_user_page_search_and_selection(gui_app: App, mocker: MockerFixture) -> None:
+def test_select_user_page_search_and_selection(
+    gui_app: App, mocker: MockerFixture
+) -> None:
     """Verifies search entry filters list, selecting student enables Next button, and clicking Next starts session."""
     from backend.student_roster import roster, StudentRecord
+
     roster.students = [StudentRecord("Charlie Brown", "cbrown@olin.edu")]
 
     mocker.patch.object(gui_app, "_handle_id_scan")

@@ -3,8 +3,8 @@ Unit tests for Email/email_service.py.
 Tests APScheduler initialization, overdue item filtering, and SMTP batch email sending.
 """
 
-import asyncio
 from datetime import datetime, timedelta
+
 import smtplib
 import pytest
 from pytest_mock import MockerFixture
@@ -68,7 +68,9 @@ async def test_send_overdue_reminders_with_overdue_items(mocker: MockerFixture) 
     ]
 
     mocker.patch("Email.email_service.request_borrowed_items", return_value=fake_items)
-    mocker.patch("Email.email_service.get_item", return_value=("Drill Press", Status.BORROWED))
+    mocker.patch(
+        "Email.email_service.get_item", return_value=("Drill Press", Status.BORROWED)
+    )
     mock_send_batch = mocker.patch("Email.email_service._send_batch_reminder_emails")
 
     await es.send_overdue_reminders()
@@ -80,9 +82,14 @@ async def test_send_overdue_reminders_with_overdue_items(mocker: MockerFixture) 
 
 
 @pytest.mark.asyncio
-async def test_send_overdue_reminders_handles_fetch_exception(mocker: MockerFixture) -> None:
+async def test_send_overdue_reminders_handles_fetch_exception(
+    mocker: MockerFixture,
+) -> None:
     """Verifies that exceptions during item fetch are handled gracefully."""
-    mocker.patch("Email.email_service.request_borrowed_items", side_effect=RuntimeError("Network Error"))
+    mocker.patch(
+        "Email.email_service.request_borrowed_items",
+        side_effect=RuntimeError("Network Error"),
+    )
     mock_send_batch = mocker.patch("Email.email_service._send_batch_reminder_emails")
 
     # Should not crash
@@ -105,7 +112,9 @@ def test_send_batch_reminder_emails_success(mocker: MockerFixture) -> None:
     es._send_batch_reminder_emails(overdue_records)
 
     # Verify single SMTP connection established
-    mock_smtp_cls.assert_called_once_with(es.SMTP_HOST, es.SMTP_PORT, timeout=es.TIMEOUT)
+    mock_smtp_cls.assert_called_once_with(
+        es.SMTP_HOST, es.SMTP_PORT, timeout=es.TIMEOUT
+    )
     mock_smtp_instance.starttls.assert_called_once()
 
     # Verify two emails were sent via send_message
@@ -127,7 +136,9 @@ def test_send_batch_reminder_emails_skips_empty_emails(mocker: MockerFixture) ->
     mock_smtp_cls.assert_not_called()
 
 
-def test_send_batch_reminder_emails_resilient_to_single_send_failure(mocker: MockerFixture) -> None:
+def test_send_batch_reminder_emails_resilient_to_single_send_failure(
+    mocker: MockerFixture,
+) -> None:
     """Verifies that failure on one recipient doesn't stop remaining batch emails from sending."""
     now = datetime.now() - timedelta(days=20)
     overdue_records = [
@@ -140,14 +151,19 @@ def test_send_batch_reminder_emails_resilient_to_single_send_failure(mocker: Moc
     mock_smtp_instance.__enter__.return_value = mock_smtp_instance
 
     # First email fails, second succeeds
-    mock_smtp_instance.send_message.side_effect = [smtplib.SMTPException("Recipients Refused"), None]
+    mock_smtp_instance.send_message.side_effect = [
+        smtplib.SMTPException("Recipients Refused"),
+        None,
+    ]
 
     es._send_batch_reminder_emails(overdue_records)
 
     assert mock_smtp_instance.send_message.call_count == 2
 
 
-def test_send_batch_reminder_emails_handles_connection_error(mocker: MockerFixture) -> None:
+def test_send_batch_reminder_emails_handles_connection_error(
+    mocker: MockerFixture,
+) -> None:
     """Verifies SMTP connection level failure is caught and logged."""
     now = datetime.now() - timedelta(days=20)
     overdue_records = [("Alice", "alice@example.com", "Band Saw", now)]

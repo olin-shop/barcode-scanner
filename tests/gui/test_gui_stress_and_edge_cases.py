@@ -5,9 +5,9 @@ Edge case and stress unit tests for GUI components, app shell, and animations.
 import asyncio
 import time
 from datetime import datetime
+
 import pytest
 from pytest_mock import MockerFixture
-import customtkinter as ctk
 
 from conftest import requires_gui
 from backend.backend_types import BorrowedItem
@@ -45,7 +45,9 @@ def test_rapid_barcode_key_stream_stress(gui_app: App, mocker: MockerFixture) ->
 
 
 @requires_gui
-def test_fast_async_response_loading_page_threshold(gui_app: App, mocker: MockerFixture) -> None:
+def test_fast_async_response_loading_page_threshold(
+    gui_app: App, mocker: MockerFixture
+) -> None:
     """Feature test: Fast responses (<150ms) do NOT show LoadingPage to prevent screen flicker."""
     mock_show_frame = mocker.patch.object(gui_app, "show_frame")
 
@@ -55,7 +57,9 @@ def test_fast_async_response_loading_page_threshold(gui_app: App, mocker: Mocker
     callback_results = []
 
     # Direct synchronous resolution test for threshold logic
-    gui_app.run_async_with_loading(fast_coro(), lambda res: callback_results.append(res), threshold_ms=150)
+    gui_app.run_async_with_loading(
+        fast_coro(), lambda res: callback_results.append(res), threshold_ms=150
+    )
 
     # Wait for future and process Tkinter event loop
     for _ in range(15):
@@ -67,13 +71,21 @@ def test_fast_async_response_loading_page_threshold(gui_app: App, mocker: Mocker
 
     assert callback_results == ["FastResult"]
     # Verify LoadingPage was NOT shown because response completed under 150ms
-    loading_calls = [c for c in mock_show_frame.call_args_list if c[0][0] == "LoadingPage"]
+    loading_calls = [
+        c for c in mock_show_frame.call_args_list if c[0][0] == "LoadingPage"
+    ]
     assert len(loading_calls) == 0
 
 
 @requires_gui
-def test_loading_page_minimum_display_duration_enforced(gui_app: App, mocker: MockerFixture) -> None:
-    """Feature test: When LoadingPage is shown, callback is held for min_display_ms to prevent awkward screen flicker."""
+def test_loading_page_minimum_display_duration_enforced(
+    gui_app: App, mocker: MockerFixture
+) -> None:
+    """
+    Feature test: When LoadingPage is shown, callback is held
+    for min_display_ms to prevent awkward screen flicker.
+    """
+
     async def slow_coro():
         await asyncio.sleep(0.1)
         return "SlowResult"
@@ -86,7 +98,7 @@ def test_loading_page_minimum_display_duration_enforced(gui_app: App, mocker: Mo
         slow_coro(),
         lambda res: callback_results.append(res),
         threshold_ms=0,
-        min_display_ms=250
+        min_display_ms=250,
     )
 
     for _ in range(30):
@@ -116,6 +128,7 @@ def test_stale_callback_discarding_on_timeout(gui_app: App) -> None:
 
 from GUI.LoadingPage import LoadingPage
 
+
 @requires_gui
 def test_animation_safety_on_widget_destruction(gui_app: App) -> None:
     """Edge case: _animate fires on destroyed LoadingPage widget without raising TclError."""
@@ -127,12 +140,17 @@ def test_animation_safety_on_widget_destruction(gui_app: App) -> None:
     try:
         page._animate()
     except Exception as err:
-        pytest.fail(f"_animate raised an unexpected exception on destroyed widget: {err}")
+        pytest.fail(
+            f"_animate raised an unexpected exception on destroyed widget: {err}"
+        )
 
 
 @requires_gui
 def test_loading_page_rhombus_animation_translation_and_wrap(gui_app: App) -> None:
-    """Verifies _animate advances rhombus coordinates rightward and wraps around on boundary exceed."""
+    """
+    Verifies _animate advances rhombus coordinates
+    rightward and wraps around on boundary exceed.
+    """
     page = LoadingPage(gui_app)
     initial_x1 = page._shape_x
     initial_x2 = page._shape2_x
@@ -170,7 +188,9 @@ def test_borrowed_items_large_dataset_rendering(gui_app: App) -> None:
 
 
 @pytest.mark.asyncio
-async def test_session_manager_special_character_barcodes(mocker: MockerFixture) -> None:
+async def test_session_manager_special_character_barcodes(
+    mocker: MockerFixture,
+) -> None:
     """Edge case: SessionManager handles non-standard barcodes with symbols and spaces."""
     sm = SessionManager()
     mocker.patch.object(sm, "_backend_lookup_item", return_value=("Oscilloscope", True))

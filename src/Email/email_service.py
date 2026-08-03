@@ -49,7 +49,10 @@ def start_email_scheduler() -> AsyncIOScheduler:
             replace_existing=True,
         )
         scheduler.start()
-        logger.info("APScheduler started: daily overdue reminder job scheduled for %02d:00.", REMINDER_HOUR)
+        logger.info(
+            "APScheduler started: daily overdue reminder job scheduled for %02d:00.",
+            REMINDER_HOUR,
+        )
     return scheduler
 
 
@@ -62,10 +65,10 @@ async def send_overdue_reminders() -> None:
         # Rotate API security key before communicating with database
         logger.info("[REMINDER] Rotating API keys before requesting borrowed items.")
         rotate_api_keys()
-        
+
         # Request borrowed items list from backend
         items = await request_borrowed_items()
-    except Exception as e:
+    except (asyncio.TimeoutError, ValueError, KeyError, OSError, RuntimeError) as e:
         logger.error("[REMINDER] Failed to fetch borrowed items: %s", e)
         return
 
@@ -86,7 +89,7 @@ async def send_overdue_reminders() -> None:
         records = items
 
     overdue_records: list[tuple[str, str, str, datetime]] = []
-    
+
     # Process each record and identify overdue items
     for item_tuple in records:
         if len(item_tuple) == 6:
@@ -108,15 +111,17 @@ async def send_overdue_reminders() -> None:
         logger.info("[REMINDER] No overdue items today.")
         return
 
-    logger.info("[REMINDER] %d overdue item(s) found - sending reminders.", len(overdue_records))
-    
+    logger.info(
+        "[REMINDER] %d overdue item(s) found - sending reminders.", len(overdue_records)
+    )
+
     # Offload blocking SMTP email transmission to background thread
     await asyncio.to_thread(_send_batch_reminder_emails, overdue_records)
 
 
 # --- SMTP Email Batch Processor ---
 def _send_batch_reminder_emails(
-    overdue_records: Sequence[tuple[str, str, str, datetime]]
+    overdue_records: Sequence[tuple[str, str, str, datetime]],
 ) -> None:
     """
     Sends email notifications over a single SMTP connection for all overdue records.
@@ -125,7 +130,9 @@ def _send_batch_reminder_emails(
     valid_records = [rec for rec in overdue_records if rec[1]]
     skipped_count = len(overdue_records) - len(valid_records)
     if skipped_count > 0:
-        logger.warning("[REMINDER] Skipped %d record(s) missing email addresses.", skipped_count)
+        logger.warning(
+            "[REMINDER] Skipped %d record(s) missing email addresses.", skipped_count
+        )
 
     if not valid_records:
         return
@@ -154,9 +161,17 @@ def _send_batch_reminder_emails(
                 )
                 try:
                     server.send_message(message)
-                    logger.info("[REMINDER] Sent overdue reminder to %s for '%s'.", email, item_name)
-                except Exception as send_err:
-                    logger.error("[REMINDER] Failed to email %s about '%s': %s", email, item_name, send_err)
-    except Exception as connection_err:
+                    logger.info(
+                        "[REMINDER] Sent overdue reminder to %s for '%s'.",
+                        email,
+                        item_name,
+                    )
+                except (smtplib.SMTPException, OSError, ValueError) as send_err:
+                    logger.error(
+                        "[REMINDER] Failed to email %s about '%s': %s",
+                        email,
+                        item_name,
+                        send_err,
+                    )
+    except (smtplib.SMTPException, OSError, ConnectionError) as connection_err:
         logger.error("[REMINDER] SMTP session error: %s", connection_err)
-

@@ -3,10 +3,11 @@ Pytest configuration and global fixtures for the barcode scanner backend and GUI
 Sets up environment variables, the Quart test client, state isolation, and GUI display detection.
 """
 
-import pytest
 import os
 import sys
 from typing import Generator
+
+import pytest
 
 # Inject root and src directories into sys.path so tests can import modules seamlessly
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -16,6 +17,7 @@ TESTS_DIR = os.path.join(ROOT_DIR, "tests")
 for d in (SRC_DIR, ROOT_DIR, TESTS_DIR):
     if d not in sys.path:
         sys.path.insert(0, d)
+
 from dotenv import load_dotenv
 
 # Load real environment variables if .env exists
@@ -53,6 +55,7 @@ def _check_gui_available() -> bool:
     """Checks if Tkinter can initialize a window on the current OS/display environment."""
     try:
         import tkinter as tk
+
         root = tk.Tk()
         root.withdraw()
         root.destroy()
@@ -64,7 +67,7 @@ def _check_gui_available() -> bool:
 HAS_GUI = _check_gui_available()
 requires_gui = pytest.mark.skipif(
     not HAS_GUI,
-    reason="GUI display server not available in this environment (headless Linux/CI without Xvfb)"
+    reason="GUI display server not available in this environment (headless Linux/CI without Xvfb)",
 )
 
 

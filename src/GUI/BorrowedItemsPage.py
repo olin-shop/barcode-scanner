@@ -1,9 +1,11 @@
-from __future__ import annotations
+"""
+Page displaying the list of items currently borrowed by the user.
+User scans items to borrow or return from this page.
+"""
 
 from datetime import datetime
 import logging
 import math
-from typing import TYPE_CHECKING
 
 import customtkinter as ctk
 
@@ -11,14 +13,8 @@ from GUI import gui_constants as const
 from GUI.popup import show_popup, show_confirm_popup
 from backend.backend_types import BorrowedItem
 
-if TYPE_CHECKING:
-    from GUI.GUImain import App
-
 logger = logging.getLogger(__name__)
 
-# =====================================================
-# BORROWED ITEMS PAGE
-# =====================================================
 
 class BorrowedItemsPage(ctk.CTkFrame):
     """
@@ -44,10 +40,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
         # Header banner canvas extending 80% across with a 70-degree forward-slash right edge
         banner_height = 78
         self.banner_canvas = ctk.CTkCanvas(
-            self,
-            bg=const.BG_LIGHT_BLUE,
-            highlightthickness=0,
-            bd=0
+            self, bg=const.BG_LIGHT_BLUE, highlightthickness=0, bd=0
         )
         self.banner_canvas.place(x=0, y=0, relwidth=1.0, height=banner_height)
 
@@ -63,9 +56,12 @@ class BorrowedItemsPage(ctk.CTkFrame):
             dx = h / math.tan(math.radians(70))
             bot_right = top_right - dx
             points = [0, 10, top_right, 10, bot_right, h, 0, h]
-            self.banner_canvas.create_polygon(points, fill=const.OLIN_BLUE_HOVER, outline="")
+            self.banner_canvas.create_polygon(
+                points, fill=const.OLIN_BLUE_HOVER, outline=""
+            )
 
-            # 2. Line of small OLIN_PINK squares drawn directly on canvas (seamless across backgrounds)
+            # 2. Line of small OLIN_PINK squares drawn
+            # directly on canvas (seamless across backgrounds)
             sq_size = 8
             spacing = 8
             y0 = 20
@@ -75,7 +71,9 @@ class BorrowedItemsPage(ctk.CTkFrame):
                 y1 = y0
                 x2 = x1 + sq_size
                 y2 = y1 + sq_size
-                self.banner_canvas.create_rectangle(x1, y1, x2, y2, fill=const.OLIN_PINK, outline="")
+                self.banner_canvas.create_rectangle(
+                    x1, y1, x2, y2, fill=const.OLIN_PINK, outline=""
+                )
 
         self.banner_canvas.bind("<Configure>", _draw_banner)
 
@@ -95,7 +93,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
             text="NAME",
             font=const.FONT_TITLE,
             text_color=const.DARK_BLUE_TEXT,
-            anchor="center"
+            anchor="center",
         )
         self.user_name_label.place(relx=0.5, y=100, anchor="center")
         self.user_name_label.lift()
@@ -114,7 +112,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
             self.scroll_frame._scrollbar.grid_forget()
             self.scroll_frame._scrollbar.configure(width=0)
             self.scroll_frame._parent_canvas.grid_configure(padx=10)
-        except Exception:
+        except (AttributeError, RuntimeError, KeyError):
             pass
 
         # Touchscreen swipe / drag scrolling support
@@ -142,7 +140,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
             canvas.bind("<ButtonPress-1>", _on_swipe_start, add="+")
             canvas.bind("<B1-Motion>", _on_swipe_drag, add="+")
             canvas.bind("<ButtonRelease-1>", _on_swipe_end, add="+")
-        except Exception:
+        except (AttributeError, RuntimeError, KeyError):
             pass
 
         # Pink instruction text placed at bottom of card
@@ -165,7 +163,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
             corner_radius=0,
             width=80,
             height=36,
-            command=self._on_home_clicked
+            command=self._on_home_clicked,
         )
         self.home_button.place(relx=0.98, rely=0.976, anchor="se")
         self.home_button.bind("<Enter>", lambda e: self.home_button.configure(text_color=const.OLIN_BLUE_HOVER))
@@ -220,11 +218,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
             date_str = item.borrowed_at.strftime("%b %d, %Y  %H:%M")
             bg_color = const.BG_WHITE if idx % 2 == 0 else const.BG_LIGHT_BLUE
 
-            row = ctk.CTkFrame(
-                self.scroll_frame,
-                fg_color=bg_color,
-                corner_radius=8
-            )
+            row = ctk.CTkFrame(self.scroll_frame, fg_color=bg_color, corner_radius=8)
             row.pack(fill="x", pady=3, padx=5)
 
             ctk.CTkButton(
@@ -236,7 +230,9 @@ class BorrowedItemsPage(ctk.CTkFrame):
                 text_color=const.DARK_BLUE_TEXT,
                 hover_color=const.OLIN_LIGHT_BLUE_HOVER,
                 height=38,
-                command=lambda n=item.name, bc=item.barcode: self._show_missing_popup(n, bc)
+                command=lambda n=item.name, bc=item.barcode: self._show_missing_popup(
+                    n, bc
+                ),
             ).pack(side="left", fill="x", expand=True, padx=(10, 0))
 
             ctk.CTkLabel(
@@ -251,7 +247,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
             text=f"Mark '{item_name}' as missing?",
             confirm_text="Mark Missing",
             on_confirm=lambda: self._confirm_missing(item_name, item_barcode),
-            parent=self
+            parent=self,
         )
 
     def _confirm_missing(self, item_name: str, item_barcode: str) -> None:
@@ -259,16 +255,22 @@ class BorrowedItemsPage(ctk.CTkFrame):
         app.show_frame("LoadingPage")
         app.run_async(
             app.session.mark_missing(item_barcode, item_name),
-            lambda success: self._on_missing_confirmed(success, item_name, item_barcode),
+            lambda success: self._on_missing_confirmed(
+                success, item_name, item_barcode
+            ),
         )
 
-    def _on_missing_confirmed(self, success: bool, item_name: str, item_barcode: str) -> None:
+    def _on_missing_confirmed(
+        self, success: bool, item_name: str, item_barcode: str
+    ) -> None:
         app = self.winfo_toplevel()
         if success:
             self.remove_item(item_name)
         else:
             logger.error(
-                "Mark-missing could not be confirmed for item=%s (%s).", item_barcode, item_name
+                "Mark-missing could not be confirmed for item=%s (%s).",
+                item_barcode,
+                item_name,
             )
             # popup
             show_popup(f"Warning: Could not mark '{item_name}' as missing.", self)
@@ -282,5 +284,5 @@ class BorrowedItemsPage(ctk.CTkFrame):
             self.home_button.configure(
                 font=(const.FONT_FAMILY, max(12, int(20 * scale)), "bold"),
                 width=max(60, int(110 * scale)),
-                height=max(28, int(44 * scale))
+                height=max(28, int(44 * scale)),
             )
