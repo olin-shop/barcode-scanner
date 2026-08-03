@@ -1,12 +1,13 @@
+"""
+Loading page screen.
+"""
+
 import math
 import customtkinter as ctk
 from PIL import Image
 
 from GUI import gui_constants as const
 
-# =====================================================
-# LOADING PAGE
-# =====================================================
 
 class LoadingPage(ctk.CTkFrame):
     """
@@ -25,7 +26,7 @@ class LoadingPage(ctk.CTkFrame):
             corner_radius=24,
             border_width=2,
             border_color=const.BORDER_BLUE,
-            fg_color=const.BG_WHITE
+            fg_color=const.BG_WHITE,
         )
         card.place(relx=0.5, rely=0.5, relwidth=0.88, relheight=0.82, anchor="center")
 
@@ -34,8 +35,12 @@ class LoadingPage(ctk.CTkFrame):
             logo_path = const.STATIC_DIR / "Olin_Shop_Logo.png"
             if logo_path.exists():
                 logo_img = Image.open(logo_path)
-                self.logo_image = ctk.CTkImage(light_image=logo_img, dark_image=logo_img, size=(160, 60))
-                ctk.CTkLabel(card, image=self.logo_image, text="").place(relx=0.045, rely=0.05, anchor="nw")
+                self.logo_image = ctk.CTkImage(
+                    light_image=logo_img, dark_image=logo_img, size=(160, 60)
+                )
+                ctk.CTkLabel(card, image=self.logo_image, text="").place(
+                    relx=0.045, rely=0.05, anchor="nw"
+                )
         except Exception:
             pass
 
@@ -51,7 +56,7 @@ class LoadingPage(ctk.CTkFrame):
             self.text_container,
             text="Loading",
             font=const.FONT_LOADING,
-            text_color=const.OLIN_BLUE
+            text_color=const.OLIN_BLUE,
         )
         self.loading_label.pack(side="left")
 
@@ -61,7 +66,7 @@ class LoadingPage(ctk.CTkFrame):
             font=const.FONT_LOADING,
             text_color=const.OLIN_BLUE,
             width=60,
-            anchor="w"
+            anchor="w",
         )
         self.dots_label.pack(side="left")
 
@@ -73,7 +78,7 @@ class LoadingPage(ctk.CTkFrame):
             height=self.canvas_height,
             bg=const.BG_WHITE,
             highlightthickness=0,
-            bd=0
+            bd=0,
         )
         self.anim_canvas.place(relx=0.5, rely=0.65, relwidth=0.995, anchor="center")
 
@@ -98,7 +103,10 @@ class LoadingPage(ctk.CTkFrame):
         self._animate()
 
     def _animate(self) -> None:
-        """Continuously translates both slanted polygon shapes left-to-right at high FPS (~125 FPS)."""
+        """
+        Continuously translates both slanted polygon shapes
+        left-to-right at high FPS (~125 FPS).
+        """
         try:
             if not self.winfo_exists():
                 return
@@ -117,19 +125,20 @@ class LoadingPage(ctk.CTkFrame):
             bot_left_x1 = top_left_x1 - dx
 
             points1 = [
-                top_left_x1, 0,
-                top_right_x1, 0,
-                bot_right_x1, shape_h,
-                bot_left_x1, shape_h
+                top_left_x1,
+                0,
+                top_right_x1,
+                0,
+                bot_right_x1,
+                shape_h,
+                bot_left_x1,
+                shape_h,
             ]
 
-            self.anim_canvas.create_polygon(
-                points1,
-                fill=const.OLIN_PINK,
-                outline=""
-            )
+            self.anim_canvas.create_polygon(points1, fill=const.OLIN_PINK, outline="")
 
-            # 2. Secondary Blue Rhombus (1.5x length = 600px, 1/4 width = 7.5px height, OLIN_BLUE_HOVER)
+            # 2. Secondary Blue Rhombus
+            # (1.5x length = 600px, 1/4 width = 7.5px height, OLIN_BLUE_HOVER)
             h2 = self._shape2_height
             y_top = (shape_h - h2) / 2.0
             y_bot = y_top + h2
@@ -141,17 +150,19 @@ class LoadingPage(ctk.CTkFrame):
             bot_left_x2 = top_left_x2 - dx2
 
             points2 = [
-                top_left_x2, y_top,
-                top_right_x2, y_top,
-                bot_right_x2, y_bot,
-                bot_left_x2, y_bot
+                top_left_x2,
+                y_top,
+                top_right_x2,
+                y_top,
+                bot_right_x2,
+                y_bot,
+                bot_left_x2,
+                y_bot,
             ]
 
             # Rendered over the pink rhombus
             self.anim_canvas.create_polygon(
-                points2,
-                fill=const.OLIN_BLUE_HOVER,
-                outline=""
+                points2, fill=const.OLIN_BLUE_HOVER, outline=""
             )
 
             # Advance shape positions rightward at high FPS (8ms timer interval)

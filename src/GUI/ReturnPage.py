@@ -13,7 +13,7 @@ from GUI.BorrowPage import ConfirmActionPage
 from GUI.popup import show_popup
 
 if TYPE_CHECKING:
-    from GUI.GUImain import App
+    from GUI.app import App
 
 # --- Logger Setup ---
 logger = logging.getLogger(__name__)
@@ -46,9 +46,11 @@ class ConfirmReturnPage(ConfirmActionPage):
         else:
             logger.error(
                 "Return could not be confirmed for item=%s (%s); returning to item list.",
-                self._item_barcode, self._item_name,
+                self._item_barcode,
+                self._item_name,
             )
-            show_popup(f"Warning: Could not confirm return for '{self._item_name}'.", self)
+            show_popup(
+                f"Warning: Could not confirm return for '{self._item_name}'.", self
+            )
             app.frames["BorrowedItemsPage"].load(app.session.user_items)
             app.show_frame("BorrowedItemsPage")
-

@@ -7,11 +7,13 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Optional, TypedDict
 
+
 @dataclass
 class BorrowedItem:
     name: str
     barcode: str
     borrowed_at: datetime
+
 
 def to_item_id(barcode: str) -> Optional[int]:
     try:

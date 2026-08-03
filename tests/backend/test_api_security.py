@@ -4,7 +4,6 @@ Unit tests for the api_security.py module.
 
 import os
 import pytest
-from pathlib import Path
 from dotenv import dotenv_values
 from backend import api_security
 

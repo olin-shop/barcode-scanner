@@ -11,13 +11,14 @@ from GUI.popup import show_popup, show_confirm_popup
 from backend.backend_types import BorrowedItem
 
 if TYPE_CHECKING:
-    from GUI.GUImain import App
+    from GUI.app import App
 
 logger = logging.getLogger(__name__)
 
 # =====================================================
 # BORROWED ITEMS PAGE
 # =====================================================
+
 
 class BorrowedItemsPage(ctk.CTkFrame):
     """
@@ -32,10 +33,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
         # Header banner canvas extending 80% across with a 70-degree forward-slash right edge
         banner_height = 75
         self.banner_canvas = ctk.CTkCanvas(
-            self,
-            bg=const.BG_LIGHT_BLUE,
-            highlightthickness=0,
-            bd=0
+            self, bg=const.BG_LIGHT_BLUE, highlightthickness=0, bd=0
         )
         self.banner_canvas.place(x=0, y=0, relwidth=1.0, height=banner_height)
 
@@ -51,9 +49,12 @@ class BorrowedItemsPage(ctk.CTkFrame):
             dx = h / math.tan(math.radians(70))
             bot_right = top_right - dx
             points = [0, 10, top_right, 10, bot_right, h, 0, h]
-            self.banner_canvas.create_polygon(points, fill=const.OLIN_BLUE_HOVER, outline="")
+            self.banner_canvas.create_polygon(
+                points, fill=const.OLIN_BLUE_HOVER, outline=""
+            )
 
-            # 2. Line of small OLIN_PINK squares drawn directly on canvas (seamless across backgrounds)
+            # 2. Line of small OLIN_PINK squares drawn
+            # directly on canvas (seamless across backgrounds)
             sq_size = 8
             spacing = 8
             y0 = 20
@@ -63,7 +64,9 @@ class BorrowedItemsPage(ctk.CTkFrame):
                 y1 = y0
                 x2 = x1 + sq_size
                 y2 = y1 + sq_size
-                self.banner_canvas.create_rectangle(x1, y1, x2, y2, fill=const.OLIN_PINK, outline="")
+                self.banner_canvas.create_rectangle(
+                    x1, y1, x2, y2, fill=const.OLIN_PINK, outline=""
+                )
 
         self.banner_canvas.bind("<Configure>", _draw_banner)
 
@@ -73,7 +76,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
             text="Current Borrowed Items",
             font=(const.FONT_FAMILY, 30, "bold"),
             text_color=const.BG_LIGHT_BLUE,
-            fg_color=const.OLIN_BLUE_HOVER
+            fg_color=const.OLIN_BLUE_HOVER,
         ).place(x=30, y=banner_height / 2, anchor="w")
 
         # Large User Name label positioned in the extra space below the top banner
@@ -82,7 +85,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
             text="",
             font=(const.FONT_FAMILY, 32, "bold"),
             text_color=const.DARK_BLUE_TEXT,
-            anchor="center"
+            anchor="center",
         )
         self.user_name_label.pack(pady=(85, 5), padx=25, anchor="center")
 
@@ -94,7 +97,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
             fg_color=const.BG_WHITE,
             border_color=const.BORDER_BLUE,
             border_width=2,
-            corner_radius=16
+            corner_radius=16,
         )
         self.scroll_frame.pack(pady=(5, 10), padx=20, fill="both", expand=True)
 
@@ -138,10 +141,11 @@ class BorrowedItemsPage(ctk.CTkFrame):
             self,
             text="Scan an item to borrow or return",
             font=const.FONT_SUBTITLE,
-            text_color=const.OLIN_PINK
+            text_color=const.OLIN_PINK,
         ).pack(side="bottom", pady=(5, 30))
 
-        # Home Button in bottom right corner (transparent background, text changes to dark blue on hover)
+        # Home Button in bottom right corner
+        # (transparent background, text changes to dark blue on hover)
         self.home_button = ctk.CTkButton(
             self,
             text="HOME",
@@ -152,11 +156,16 @@ class BorrowedItemsPage(ctk.CTkFrame):
             corner_radius=0,
             width=80,
             height=36,
-            command=self._on_home_clicked
+            command=self._on_home_clicked,
         )
         self.home_button.place(relx=0.96, rely=0.97, anchor="se")
-        self.home_button.bind("<Enter>", lambda e: self.home_button.configure(text_color=const.DARK_BLUE_TEXT))
-        self.home_button.bind("<Leave>", lambda e: self.home_button.configure(text_color=const.OLIN_BLUE))
+        self.home_button.bind(
+            "<Enter>",
+            lambda e: self.home_button.configure(text_color=const.DARK_BLUE_TEXT),
+        )
+        self.home_button.bind(
+            "<Leave>", lambda e: self.home_button.configure(text_color=const.OLIN_BLUE)
+        )
 
         # Internal state: maps item_name -> item_barcode for the current session
         self._item_barcodes: dict[str, str] = {}
@@ -207,11 +216,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
             date_str = item.borrowed_at.strftime("%b %d, %Y  %H:%M")
             bg_color = const.BG_WHITE if idx % 2 == 0 else const.BG_LIGHT_BLUE
 
-            row = ctk.CTkFrame(
-                self.scroll_frame,
-                fg_color=bg_color,
-                corner_radius=8
-            )
+            row = ctk.CTkFrame(self.scroll_frame, fg_color=bg_color, corner_radius=8)
             row.pack(fill="x", pady=3, padx=5)
 
             ctk.CTkButton(
@@ -223,7 +228,9 @@ class BorrowedItemsPage(ctk.CTkFrame):
                 text_color=const.DARK_BLUE_TEXT,
                 hover_color=const.OLIN_LIGHT_BLUE_HOVER,
                 height=38,
-                command=lambda n=item.name, bc=item.barcode: self._show_missing_popup(n, bc)
+                command=lambda n=item.name, bc=item.barcode: self._show_missing_popup(
+                    n, bc
+                ),
             ).pack(side="left", fill="x", expand=True, padx=(10, 0))
 
             ctk.CTkLabel(
@@ -231,7 +238,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
                 text=date_str,
                 font=const.FONT_DATE,
                 text_color=const.MUTED_BLUE_TEXT,
-                anchor="e"
+                anchor="e",
             ).pack(side="right", padx=(10, 15))
 
     def _show_missing_popup(self, item_name: str, item_barcode: str) -> None:
@@ -239,7 +246,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
             text=f"Mark '{item_name}' as missing?",
             confirm_text="Mark Missing",
             on_confirm=lambda: self._confirm_missing(item_name, item_barcode),
-            parent=self
+            parent=self,
         )
 
     def _confirm_missing(self, item_name: str, item_barcode: str) -> None:
@@ -247,16 +254,22 @@ class BorrowedItemsPage(ctk.CTkFrame):
         app.show_frame("LoadingPage")
         app.run_async(
             app.session.mark_missing(item_barcode, item_name),
-            lambda success: self._on_missing_confirmed(success, item_name, item_barcode),
+            lambda success: self._on_missing_confirmed(
+                success, item_name, item_barcode
+            ),
         )
 
-    def _on_missing_confirmed(self, success: bool, item_name: str, item_barcode: str) -> None:
+    def _on_missing_confirmed(
+        self, success: bool, item_name: str, item_barcode: str
+    ) -> None:
         app = self.winfo_toplevel()
         if success:
             self.remove_item(item_name)
         else:
             logger.error(
-                "Mark-missing could not be confirmed for item=%s (%s).", item_barcode, item_name
+                "Mark-missing could not be confirmed for item=%s (%s).",
+                item_barcode,
+                item_name,
             )
             # popup
             show_popup(f"Warning: Could not mark '{item_name}' as missing.", self)
@@ -270,5 +283,5 @@ class BorrowedItemsPage(ctk.CTkFrame):
             self.home_button.configure(
                 font=(const.FONT_FAMILY, max(12, int(20 * scale)), "bold"),
                 width=max(60, int(110 * scale)),
-                height=max(28, int(44 * scale))
+                height=max(28, int(44 * scale)),
             )

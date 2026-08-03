@@ -52,6 +52,7 @@ def test_show_confirm_popup() -> None:
     app.withdraw()
 
     confirmed = []
+
     def on_confirm():
         confirmed.append(True)
 

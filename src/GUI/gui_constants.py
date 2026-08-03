@@ -23,20 +23,20 @@ BORDER_BLUE: str = "#BCE3F7"
 GREEN_BLUE: str = "#26AAA5"
 GREEN_BLUE_HOVER: str = "#00677E"
 
-OLIN_BLUE: str = "#009BDF"            # Olin Cerulean / Light Blue Accent
+OLIN_BLUE: str = "#009BDF"  # Olin Cerulean / Light Blue Accent
 OLIN_BLUE_HOVER: str = "#0045BC"
 OLIN_LIGHT_BLUE: str = "#68C1D3"
 OLIN_LIGHT_BLUE_HOVER: str = "#D4ECF9"
 
 OLIN_PINK: str = "#ED037C"
 
-DARK_BLUE_TEXT: str = "#0F2537"       # Primary text color
-MUTED_BLUE_TEXT: str = "#4A6572"      # Subtitles & dates
+DARK_BLUE_TEXT: str = "#0F2537"  # Primary text color
+MUTED_BLUE_TEXT: str = "#4A6572"  # Subtitles & dates
 
-DARK_BLUE: str = "#009DD1"            # Primary Olin Blue
-LIGHT_BLUE: str = "#EBF6FC"           # Soft Light Blue
+DARK_BLUE: str = "#009DD1"  # Primary Olin Blue
+LIGHT_BLUE: str = "#EBF6FC"  # Soft Light Blue
 
-CONFIRM_BLUE: str = "#009DD1"         # Olin Blue confirm action
+CONFIRM_BLUE: str = "#009DD1"  # Olin Blue confirm action
 CONFIRM_BLUE_HOVER: str = "#0086B3"
 
 CANCEL_RED: str = "#E31D3C"

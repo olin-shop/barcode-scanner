@@ -1,6 +1,5 @@
 """
-per-user session state and backend communication for the kiosk app.
-
+Per-user session state and backend communication for the kiosk app.
 """
 
 import logging
@@ -43,7 +42,10 @@ class SessionManager:
         self.user_items = []
 
     def select_student(self, student: Any) -> None:
-        """Selects a student record and initializes user details using email as unique identifier."""
+        """
+        Selects a student record and initializes
+        user details using email as unique identifier.
+        """
         self.selected_student = student
         if hasattr(student, "email"):
             self.current_user_barcode = student.email
@@ -75,7 +77,9 @@ class SessionManager:
             self.current_user_barcode, item_barcode, item_name
         )
         if success:
-            self.user_items.append(BorrowedItem(item_name, item_barcode, datetime.now()))
+            self.user_items.append(
+                BorrowedItem(item_name, item_barcode, datetime.now())
+            )
         return success
 
     async def confirm_return(self, item_barcode: str, item_name: str) -> bool:
@@ -96,11 +100,6 @@ class SessionManager:
             self.user_items = [i for i in self.user_items if i.name != item_name]
         return success
 
-    # =====================================================================
-    # BACKEND HOOKS
-    # Real logic: talks to the database pipeline via backend/requests.py.
-    # =====================================================================
-
     async def _backend_get_user_items(self, user_barcode: str) -> list[BorrowedItem]:
         """
         Called after a user ID is scanned.
@@ -112,7 +111,10 @@ class SessionManager:
         """
         res = await get_name(user_barcode)
         if res is None:
-            logger.warning("get_name returned None for user_barcode=%s (timeout or network error)", user_barcode)
+            logger.warning(
+                "get_name returned None for user_barcode=%s (timeout or network error)",
+                user_barcode,
+            )
             self.current_user_name = ""
             self.current_user_email = ""
             return []
@@ -132,7 +134,9 @@ class SessionManager:
 
             item_name, _status = await get_item(item_id)
             if not item_name:
-                logger.warning("Could not resolve item id=%s for user=%s", item_id, user_barcode)
+                logger.warning(
+                    "Could not resolve item id=%s for user=%s", item_id, user_barcode
+                )
                 item_name = f"Item ({item_id})"
 
             items.append(BorrowedItem(item_name, str(item_id), borrowed_at))
@@ -171,7 +175,9 @@ class SessionManager:
 
         item_name, status = res
         if status == Status.BORROWED:
-            logger.warning("Item %s (%s) is already borrowed in DB.", item_barcode, item_name)
+            logger.warning(
+                "Item %s (%s) is already borrowed in DB.", item_barcode, item_name
+            )
             return item_name, None
 
         if not item_name:
@@ -188,7 +194,8 @@ class SessionManager:
         if item_id is None or user_barcode is None:
             logger.error(
                 "Cannot confirm borrow - invalid barcode(s): user=%s item=%s",
-                user_barcode, item_barcode,
+                user_barcode,
+                item_barcode,
             )
             return False
 
@@ -204,11 +211,17 @@ class SessionManager:
 
         if success:
             logger.info(
-                "Borrow confirmed: user=%s, item=%s (%s)", user_barcode, item_barcode, item_name
+                "Borrow confirmed: user=%s, item=%s (%s)",
+                user_barcode,
+                item_barcode,
+                item_name,
             )
         else:
             logger.error(
-                "Borrow failed to send: user=%s, item=%s (%s)", user_barcode, item_barcode, item_name
+                "Borrow failed to send: user=%s, item=%s (%s)",
+                user_barcode,
+                item_barcode,
+                item_name,
             )
         return success
 
@@ -220,12 +233,14 @@ class SessionManager:
         if item_id is None or user_barcode is None:
             logger.error(
                 "Cannot confirm return - invalid barcode(s): user=%s item=%s",
-                user_barcode, item_barcode,
+                user_barcode,
+                item_barcode,
             )
             return False
 
         borrowed_at = next(
-            (i.borrowed_at for i in self.user_items if i.barcode == item_barcode), min_datetime
+            (i.borrowed_at for i in self.user_items if i.barcode == item_barcode),
+            min_datetime,
         )
 
         payload: UserInfoPayload = {
@@ -240,11 +255,17 @@ class SessionManager:
 
         if success:
             logger.info(
-                "Return confirmed: user=%s, item=%s (%s)", user_barcode, item_barcode, item_name
+                "Return confirmed: user=%s, item=%s (%s)",
+                user_barcode,
+                item_barcode,
+                item_name,
             )
         else:
             logger.error(
-                "Return failed to send: user=%s, item=%s (%s)", user_barcode, item_barcode, item_name
+                "Return failed to send: user=%s, item=%s (%s)",
+                user_barcode,
+                item_barcode,
+                item_name,
             )
         return success
 
@@ -256,12 +277,14 @@ class SessionManager:
         if item_id is None or user_barcode is None:
             logger.error(
                 "Cannot mark missing - invalid barcode(s): user=%s item=%s",
-                user_barcode, item_barcode,
+                user_barcode,
+                item_barcode,
             )
             return False
 
         borrowed_at = next(
-            (i.borrowed_at for i in self.user_items if i.barcode == item_barcode), min_datetime
+            (i.borrowed_at for i in self.user_items if i.barcode == item_barcode),
+            min_datetime,
         )
 
         payload: UserInfoPayload = {
@@ -276,11 +299,16 @@ class SessionManager:
 
         if success:
             logger.info(
-                "Marked missing: user=%s, item=%s (%s)", user_barcode, item_barcode, item_name
+                "Marked missing: user=%s, item=%s (%s)",
+                user_barcode,
+                item_barcode,
+                item_name,
             )
         else:
             logger.error(
                 "Mark-missing failed to send: user=%s, item=%s (%s)",
-                user_barcode, item_barcode, item_name,
+                user_barcode,
+                item_barcode,
+                item_name,
             )
         return success

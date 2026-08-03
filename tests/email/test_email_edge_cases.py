@@ -4,6 +4,7 @@ Edge case and stress unit tests for Email/email_service.py.
 
 import asyncio
 from datetime import datetime, timedelta
+
 import smtplib
 import pytest
 from pytest_mock import MockerFixture
@@ -22,8 +23,7 @@ def test_send_batch_high_volume_stress(mocker: MockerFixture) -> None:
     """Stress test: verifies single SMTP connection context manager handles 500 records smoothly."""
     now = datetime.now() - timedelta(days=20)
     overdue_records = [
-        (f"User_{i}", f"user_{i}@example.com", f"Item_{i}", now)
-        for i in range(500)
+        (f"User_{i}", f"user_{i}@example.com", f"Item_{i}", now) for i in range(500)
     ]
 
     mock_smtp_instance = mocker.MagicMock()
@@ -67,7 +67,10 @@ def test_send_batch_mid_stream_disconnection(mocker: MockerFixture) -> None:
     mock_smtp_instance.__enter__.return_value = mock_smtp_instance
 
     # First send succeeds, second raises SMTPServerDisconnected
-    mock_smtp_instance.send_message.side_effect = [None, smtplib.SMTPServerDisconnected("Connection Reset")]
+    mock_smtp_instance.send_message.side_effect = [
+        None,
+        smtplib.SMTPServerDisconnected("Connection Reset"),
+    ]
 
     # Should not raise exception
     es._send_batch_reminder_emails(overdue_records)
@@ -77,9 +80,9 @@ def test_send_batch_mid_stream_disconnection(mocker: MockerFixture) -> None:
 async def test_overdue_threshold_boundary_math(mocker: MockerFixture) -> None:
     """Boundary test: items exactly 14 days ago vs 13.99 days vs 1000 days ago."""
     now = datetime.now()
-    exact_14_days = now - timedelta(days=14, seconds=5)      # Just past cutoff -> overdue
-    just_under_14 = now - timedelta(days=13, hours=23)       # Not overdue
-    very_old = now - timedelta(days=1000)                      # Overdue
+    exact_14_days = now - timedelta(days=14, seconds=5)  # Just past cutoff -> overdue
+    just_under_14 = now - timedelta(days=13, hours=23)  # Not overdue
+    very_old = now - timedelta(days=1000)  # Overdue
 
     fake_items = [
         ("u1", "Alice", "alice@example.com", 1, exact_14_days, Status.BORROWED),
@@ -88,7 +91,10 @@ async def test_overdue_threshold_boundary_math(mocker: MockerFixture) -> None:
     ]
 
     mocker.patch("Email.email_service.request_borrowed_items", return_value=fake_items)
-    mocker.patch("Email.email_service.get_item", side_effect=lambda item_id: (f"Item {item_id}", Status.BORROWED))
+    mocker.patch(
+        "Email.email_service.get_item",
+        side_effect=lambda item_id: (f"Item {item_id}", Status.BORROWED),
+    )
     mock_send_batch = mocker.patch("Email.email_service._send_batch_reminder_emails")
 
     await es.send_overdue_reminders()
@@ -110,7 +116,9 @@ async def test_concurrent_send_overdue_reminders(mocker: MockerFixture) -> None:
     fake_items = [("u1", "Alice", "alice@example.com", 1, now, Status.BORROWED)]
 
     mocker.patch("Email.email_service.request_borrowed_items", return_value=fake_items)
-    mocker.patch("Email.email_service.get_item", return_value=("Drill", Status.BORROWED))
+    mocker.patch(
+        "Email.email_service.get_item", return_value=("Drill", Status.BORROWED)
+    )
     mock_send_batch = mocker.patch("Email.email_service._send_batch_reminder_emails")
 
     # Run 3 reminder calls concurrently

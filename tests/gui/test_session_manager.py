@@ -4,6 +4,7 @@ Verifies user session state lifecycle, barcode item lookups, and borrow/return/m
 """
 
 from datetime import datetime
+
 import pytest
 from pytest_mock import MockerFixture
 
@@ -148,7 +149,10 @@ async def test_lookup_item_already_borrowed(mocker: MockerFixture) -> None:
 
 @pytest.mark.asyncio
 async def test_lookup_item_already_borrowed_empty_name(mocker: MockerFixture) -> None:
-    """Verifies scanning an item that is already borrowed in DB with empty name returns None for is_borrowed."""
+    """
+    Verifies scanning an item that is already borrowed
+    in DB with empty name returns None for is_borrowed.
+    """
     sm = SessionManager()
     mocker.patch("GUI.session_manager.get_item", return_value=("", Status.BORROWED))
 

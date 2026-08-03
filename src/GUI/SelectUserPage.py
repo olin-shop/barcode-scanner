@@ -1,12 +1,13 @@
+"""
+Select User page, with searchable dropdown selection.
+"""
+
 import customtkinter as ctk
 from PIL import Image
 
 from GUI import gui_constants as const
 from backend.student_roster import roster, StudentRecord
 
-# =====================================================
-# SELECT USER PAGE (SEARCHABLE DROPDOWN SELECTION)
-# =====================================================
 
 class SelectUserPage(ctk.CTkFrame):
     """
@@ -29,7 +30,7 @@ class SelectUserPage(ctk.CTkFrame):
             corner_radius=24,
             border_width=2,
             border_color=const.BORDER_BLUE,
-            fg_color=const.BG_WHITE
+            fg_color=const.BG_WHITE,
         )
         card.place(relx=0.5, rely=0.5, relwidth=0.88, relheight=0.82, anchor="center")
         self.card = card
@@ -39,8 +40,12 @@ class SelectUserPage(ctk.CTkFrame):
             logo_path = const.STATIC_DIR / "Olin_Shop_Logo.png"
             if logo_path.exists():
                 logo_img = Image.open(logo_path)
-                self.logo_image = ctk.CTkImage(light_image=logo_img, dark_image=logo_img, size=(160, 60))
-                ctk.CTkLabel(card, image=self.logo_image, text="").place(relx=0.045, rely=0.05, anchor="nw")
+                self.logo_image = ctk.CTkImage(
+                    light_image=logo_img, dark_image=logo_img, size=(160, 60)
+                )
+                ctk.CTkLabel(card, image=self.logo_image, text="").place(
+                    relx=0.045, rely=0.05, anchor="nw"
+                )
         except Exception:
             self.logo_image = None
 
@@ -50,7 +55,7 @@ class SelectUserPage(ctk.CTkFrame):
             text="Enter Your Name Below",
             font=const.FONT_HEADING,
             text_color=const.OLIN_BLUE,
-            justify="center"
+            justify="center",
         )
         self.title_label.place(relx=0.5, rely=0.22, anchor="center")
 
@@ -62,7 +67,7 @@ class SelectUserPage(ctk.CTkFrame):
             border_color=const.BORDER_BLUE,
             corner_radius=12,
             height=54,
-            width=420
+            width=420,
         )
         self.search_container.place(relx=0.5, rely=0.42, anchor="center")
 
@@ -76,7 +81,7 @@ class SelectUserPage(ctk.CTkFrame):
             border_width=0,
             text_color=const.DARK_BLUE_TEXT,
             width=360,
-            height=48
+            height=48,
         )
         self.search_entry.place(relx=0.02, rely=0.5, anchor="w")
         self.search_entry.bind("<KeyRelease>", self._on_type_search)
@@ -92,7 +97,7 @@ class SelectUserPage(ctk.CTkFrame):
             text_color=const.DARK_BLUE_TEXT,
             width=38,
             height=48,
-            command=self._toggle_dropdown
+            command=self._toggle_dropdown,
         )
         self.arrow_button.place(relx=0.98, rely=0.5, anchor="e")
 
@@ -104,7 +109,7 @@ class SelectUserPage(ctk.CTkFrame):
             border_color=const.BORDER_BLUE,
             corner_radius=12,
             width=396,
-            height=120
+            height=120,
         )
         self.dropdown_frame.place(relx=0.5, rely=0.64, anchor="center")
         self.dropdown_frame.place_forget()  # Hidden by default
@@ -121,11 +126,12 @@ class SelectUserPage(ctk.CTkFrame):
             width=220,
             height=54,
             state="disabled",
-            command=self._on_next_clicked
+            command=self._on_next_clicked,
         )
         self.next_button.place(relx=0.5, rely=0.82, anchor="center")
 
-        # Home Button in bottom right corner (transparent background, text changes to dark blue on hover)
+        # Home Button in bottom right corner
+        # (transparent background, text changes to dark blue on hover)
         self.home_button = ctk.CTkButton(
             card,
             text="HOME",
@@ -136,11 +142,16 @@ class SelectUserPage(ctk.CTkFrame):
             corner_radius=0,
             width=80,
             height=36,
-            command=self._on_home_clicked
+            command=self._on_home_clicked,
         )
         self.home_button.place(relx=0.98, rely=0.98, anchor="se")
-        self.home_button.bind("<Enter>", lambda e: self.home_button.configure(text_color=const.DARK_BLUE_TEXT))
-        self.home_button.bind("<Leave>", lambda e: self.home_button.configure(text_color=const.OLIN_BLUE))
+        self.home_button.bind(
+            "<Enter>",
+            lambda e: self.home_button.configure(text_color=const.DARK_BLUE_TEXT),
+        )
+        self.home_button.bind(
+            "<Leave>", lambda e: self.home_button.configure(text_color=const.OLIN_BLUE)
+        )
 
         # Load all students
         self.load_students()
@@ -185,7 +196,9 @@ class SelectUserPage(ctk.CTkFrame):
         """Filters names in the scrollable dropdown list based on typed query."""
         query = self.search_entry.get().strip().lower()
         if query:
-            self._filtered_students = [s for s in self._all_students if query in s.name.lower()]
+            self._filtered_students = [
+                s for s in self._all_students if query in s.name.lower()
+            ]
         else:
             self._filtered_students = self._all_students.copy()
 
@@ -207,7 +220,7 @@ class SelectUserPage(ctk.CTkFrame):
                 self.dropdown_frame,
                 text="No matching names",
                 font=const.FONT_ITEM_ROW,
-                text_color=const.MUTED_BLUE_TEXT
+                text_color=const.MUTED_BLUE_TEXT,
             )
             no_match_label.pack(fill="x", pady=5)
         else:
@@ -221,7 +234,7 @@ class SelectUserPage(ctk.CTkFrame):
                     text_color=const.DARK_BLUE_TEXT,
                     anchor="w",
                     height=34,
-                    command=lambda s=student: self._select_student(s)
+                    command=lambda s=student: self._select_student(s),
                 )
                 btn.pack(fill="x", pady=1)
 
@@ -253,33 +266,34 @@ class SelectUserPage(ctk.CTkFrame):
             app.show_frame("BorrowedItemsPage")
 
     def update_scale(self, scale: float) -> None:
-        """Dynamically scale fonts, search entry, dropdown, and next button when screen size changes."""
+        """
+        Dynamically scale fonts, search entry,
+        dropdown, and next button when screen size changes.
+        """
         new_title_size = max(24, int(52 * scale))
         new_btn_size = max(14, int(26 * scale))
 
         self.title_label.configure(font=(const.FONT_FAMILY, new_title_size, "bold"))
         self.search_container.configure(
-            width=max(200, int(420 * scale)),
-            height=max(36, int(54 * scale))
+            width=max(200, int(420 * scale)), height=max(36, int(54 * scale))
         )
         self.search_entry.configure(
             font=(const.FONT_FAMILY, new_btn_size, "bold"),
             width=max(160, int(360 * scale)),
-            height=max(30, int(48 * scale))
+            height=max(30, int(48 * scale)),
         )
         self.dropdown_frame.configure(
-            width=max(180, int(396 * scale)),
-            height=max(80, int(140 * scale))
+            width=max(180, int(396 * scale)), height=max(80, int(140 * scale))
         )
         self.next_button.configure(
             font=(const.FONT_FAMILY, new_btn_size, "bold"),
             width=max(120, int(220 * scale)),
-            height=max(36, int(54 * scale))
+            height=max(36, int(54 * scale)),
         )
         self.home_button.configure(
             font=(const.FONT_FAMILY, max(12, int(20 * scale)), "bold"),
             width=max(60, int(110 * scale)),
-            height=max(28, int(44 * scale))
+            height=max(28, int(44 * scale)),
         )
 
         if hasattr(self, "logo_image") and self.logo_image:

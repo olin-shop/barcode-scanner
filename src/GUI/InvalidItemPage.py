@@ -27,7 +27,7 @@ class InvalidCardPage(ctk.CTkFrame):
             corner_radius=24,
             border_width=2,
             border_color=const.BORDER_BLUE,
-            fg_color=const.BG_WHITE
+            fg_color=const.BG_WHITE,
         )
         card.place(relx=0.5, rely=0.5, relwidth=0.88, relheight=0.82, anchor="center")
 
@@ -36,8 +36,12 @@ class InvalidCardPage(ctk.CTkFrame):
             logo_path = const.STATIC_DIR / "Olin_Shop_Logo.png"
             if logo_path.exists():
                 logo_img = Image.open(logo_path)
-                self.logo_image = ctk.CTkImage(light_image=logo_img, dark_image=logo_img, size=(160, 60))
-                ctk.CTkLabel(card, image=self.logo_image, text="").place(relx=0.045, rely=0.05, anchor="nw")
+                self.logo_image = ctk.CTkImage(
+                    light_image=logo_img, dark_image=logo_img, size=(160, 60)
+                )
+                ctk.CTkLabel(card, image=self.logo_image, text="").place(
+                    relx=0.045, rely=0.05, anchor="nw"
+                )
         except Exception:
             self.logo_image = None
 
@@ -47,7 +51,7 @@ class InvalidCardPage(ctk.CTkFrame):
             text=title_text,
             font=const.FONT_CONFIRM_HUGE,
             text_color=const.OLIN_BLUE,
-            justify="center"
+            justify="center",
         )
         self.header_label.place(relx=0.5, rely=0.42, anchor="center")
 
@@ -56,7 +60,7 @@ class InvalidCardPage(ctk.CTkFrame):
             card,
             text="Please try again",
             font=const.FONT_CLOSING_SESSION,
-            text_color=const.MUTED_BLUE_TEXT
+            text_color=const.MUTED_BLUE_TEXT,
         )
         self.sub_label.place(relx=0.5, rely=0.72, anchor="center")
 
@@ -85,4 +89,4 @@ class InvalidItemIDPage(InvalidCardPage):
 
 
 # Backwards compatibility alias
-InvalidItemPage = InvalidItemIDPage
+InvalidItemPage = InvalidItemIDPage

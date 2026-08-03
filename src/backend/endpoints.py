@@ -1,5 +1,6 @@
 """
-How all of the local endpoints function, receiving webhook callbacks and matching them back to their original pending requests.
+How all of the local endpoints function, receiving webhook callbacks
+and matching them back to their original pending requests.
 """
 
 import logging
@@ -19,7 +20,9 @@ logger = logging.getLogger(__name__)
 quart_app: Quart = Quart(__name__)
 
 
-def _fulfill_pending_future(request_id: Optional[str], result: Any = None, exception: Optional[Exception] = None) -> bool:
+def _fulfill_pending_future(
+    request_id: Optional[str], result: Any = None, exception: Optional[Exception] = None
+) -> bool:
     """Safely fulfills a pending asyncio Future across event loops / threads."""
     if not request_id or request_id not in pending_requests:
         return False
@@ -44,7 +47,10 @@ async def verify_api_key():
     if request.method == "POST":
         api_key = request.headers.get("x-api-key")
         if not api_key or api_key != get_current_key():
-            logger.warning("Unauthorized webhook access attempt from %s. Invalid x-api-key.", request.remote_addr)
+            logger.warning(
+                "Unauthorized webhook access attempt from %s. Invalid x-api-key.",
+                request.remote_addr,
+            )
             abort(401, description="Unauthorized")
 
 
@@ -53,21 +59,28 @@ async def checkout() -> Response:
     """
     The checkout route.
 
-    Receives the checkout confirmation from the checkout pipeline webhook. 
-    It extracts the unique request identifier from the payload, validates if the 
-    transmission was successful, and uses it to fulfill the asynchronous placeholder. 
+    Receives the checkout confirmation from the checkout pipeline webhook.
+    It extracts the unique request identifier from the payload, validates if the
+    transmission was successful, and uses it to fulfill the asynchronous placeholder.
     This un-pauses the original `checkout()` request in `requests.py`.
     """
     payload: dict = await request.get_json()
     request_id: Optional[str] = payload.get("RequestID")
     has_been_sent: bool = payload.get("Sent") == "Received"
 
-    logger.info("Received /checkout webhook callback (RequestID=%s, Sent=%s).", request_id, has_been_sent)
+    logger.info(
+        "Received /checkout webhook callback (RequestID=%s, Sent=%s).",
+        request_id,
+        has_been_sent,
+    )
 
     if _fulfill_pending_future(request_id, result=has_been_sent):
         logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
     else:
-        logger.warning("Received /checkout callback for unknown or expired RequestID=%s", request_id)
+        logger.warning(
+            "Received /checkout callback for unknown or expired RequestID=%s",
+            request_id,
+        )
 
     return jsonify(EMPTY_DATA)
 
@@ -77,8 +90,8 @@ async def get_item_route() -> Response:
     """
     The item route.
 
-    Receives the item data from the item pipeline webhook. It parses the item name 
-    and enum status, extracts the unique request identifier, and fulfills the 
+    Receives the item data from the item pipeline webhook. It parses the item name
+    and enum status, extracts the unique request identifier, and fulfills the
     asynchronous placeholder to un-pause the original `get_item()` request.
     """
     payload: dict = await request.get_json()
@@ -86,18 +99,29 @@ async def get_item_route() -> Response:
     item_name: str = payload.get("ItemName", "")
     raw_status = payload.get("ItemStatus")
 
-    logger.info("Received /items webhook callback (RequestID=%s, ItemName=%r).", request_id, item_name)
+    logger.info(
+        "Received /items webhook callback (RequestID=%s, ItemName=%r).",
+        request_id,
+        item_name,
+    )
 
     try:
         item_status: Status = Status(raw_status)
     except ValueError:
         item_status = Status.NONE
-        logger.error("Invalid or unrecognized ItemStatus=%r for item %r (RequestID=%s)", raw_status, item_name, request_id)
+        logger.error(
+            "Invalid or unrecognized ItemStatus=%r for item %r (RequestID=%s)",
+            raw_status,
+            item_name,
+            request_id,
+        )
 
     if _fulfill_pending_future(request_id, result=(item_name, item_status)):
         logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
     else:
-        logger.warning("Received /items callback for unknown or expired RequestID=%s", request_id)
+        logger.warning(
+            "Received /items callback for unknown or expired RequestID=%s", request_id
+        )
 
     return jsonify(EMPTY_DATA)
 
@@ -107,9 +131,9 @@ async def get_name_route() -> Response:
     """
     The name route.
 
-    Receives the user data and borrowed items payload from the name pipeline webhook. 
-    It parses the Excel dates into datetimes, maps the enum statuses, extracts the 
-    unique request identifier, and fulfills the asynchronous placeholder to un-pause 
+    Receives the user data and borrowed items payload from the name pipeline webhook.
+    It parses the Excel dates into datetimes, maps the enum statuses, extracts the
+    unique request identifier, and fulfills the asynchronous placeholder to un-pause
     the original `get_name()` request.
     """
     payload: dict = await request.get_json()
@@ -119,7 +143,12 @@ async def get_name_route() -> Response:
     email: str = payload.get("Email", "")
     excel_data: list[dict] = payload.get("excelData", [])
 
-    logger.info("Received /names webhook callback (RequestID=%s, Name=%r, ItemsCount=%d).", request_id, name, len(excel_data))
+    logger.info(
+        "Received /names webhook callback (RequestID=%s, Name=%r, ItemsCount=%d).",
+        request_id,
+        name,
+        len(excel_data),
+    )
 
     time_borrowed: list[datetime] = []
     statuses: list[Status] = []
@@ -130,22 +159,36 @@ async def get_name_route() -> Response:
             item_id: int = int(row.get("ItemID", 0))
             date_number: float = float(row.get("DateBorrowed", 0.0))
             status: Status = Status(row.get("ItemStatus", ""))
-            
+
             if status == Status.NONE:
-                logger.error("Invalid status NONE for item_id=%d in /names payload (RequestID=%s)", item_id, request_id)
-                
+                logger.error(
+                    "Invalid status NONE for item_id=%d in /names payload (RequestID=%s)",
+                    item_id,
+                    request_id,
+                )
+
             item_ids.append(item_id)
             time_borrowed.append(from_excel_date(date_number))
             statuses.append(status)
         except (ValueError, KeyError, TypeError) as e:
-            logger.error("Corrupted row data in /names callback for RequestID=%s: %s", request_id, e)
-            _fulfill_pending_future(request_id, exception=ValueError(f"Corrupted row data: {e}"))
+            logger.error(
+                "Corrupted row data in /names callback for RequestID=%s: %s",
+                request_id,
+                e,
+            )
+            _fulfill_pending_future(
+                request_id, exception=ValueError(f"Corrupted row data: {e}")
+            )
             return jsonify(EMPTY_DATA)
 
-    if _fulfill_pending_future(request_id, result=(name, email, time_borrowed, statuses, item_ids)):
+    if _fulfill_pending_future(
+        request_id, result=(name, email, time_borrowed, statuses, item_ids)
+    ):
         logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
     else:
-        logger.warning("Received /names callback for unknown or expired RequestID=%s", request_id)
+        logger.warning(
+            "Received /names callback for unknown or expired RequestID=%s", request_id
+        )
 
     return jsonify(EMPTY_DATA)
 
@@ -155,16 +198,20 @@ async def request_borrowed_items_route() -> Response:
     """
     The borrowed items route.
 
-    Receives the full list of currently borrowed items from the pipeline webhook. 
-    It parses the dates and statuses, extracts the unique request identifier, and 
-    fulfills the asynchronous placeholder to un-pause the original 
+    Receives the full list of currently borrowed items from the pipeline webhook.
+    It parses the dates and statuses, extracts the unique request identifier, and
+    fulfills the asynchronous placeholder to un-pause the original
     `request_borrowed_items()` request.
     """
     payload: dict = await request.get_json()
     request_id: Optional[str] = payload.get("RequestID")
     excel_data: list[dict] = payload.get("excelData", [])
 
-    logger.info("Received /borrowed-items webhook callback (RequestID=%s, ItemsCount=%d).", request_id, len(excel_data))
+    logger.info(
+        "Received /borrowed-items webhook callback (RequestID=%s, ItemsCount=%d).",
+        request_id,
+        len(excel_data),
+    )
 
     time_borrowed: list[datetime] = []
     statuses: list[Status] = []
@@ -175,22 +222,35 @@ async def request_borrowed_items_route() -> Response:
             item_id: int = int(row.get("ItemID", 0))
             date_number: float = float(row.get("DateBorrowed", 0.0))
             status: Status = Status(row.get("ItemStatus", ""))
-            
+
             if status == Status.NONE:
-                logger.error("Invalid status NONE for item_id=%d in /borrowed-items payload (RequestID=%s)", item_id, request_id)
-                
+                logger.error(
+                    "Invalid status NONE for item_id=%d in /borrowed-items payload (RequestID=%s)",
+                    item_id,
+                    request_id,
+                )
+
             item_ids.append(item_id)
             time_borrowed.append(from_excel_date(date_number))
             statuses.append(status)
         except (ValueError, KeyError, TypeError) as e:
-            logger.error("Corrupted row data in /borrowed-items callback for RequestID=%s: %s", request_id, e)
-            _fulfill_pending_future(request_id, exception=ValueError(f"Corrupted row data: {e}"))
+            logger.error(
+                "Corrupted row data in /borrowed-items callback for RequestID=%s: %s",
+                request_id,
+                e,
+            )
+            _fulfill_pending_future(
+                request_id, exception=ValueError(f"Corrupted row data: {e}")
+            )
             return jsonify(EMPTY_DATA)
 
     if _fulfill_pending_future(request_id, result=(time_borrowed, statuses, item_ids)):
         logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
     else:
-        logger.warning("Received /borrowed-items callback for unknown or expired RequestID=%s", request_id)
+        logger.warning(
+            "Received /borrowed-items callback for unknown or expired RequestID=%s",
+            request_id,
+        )
 
     return jsonify(EMPTY_DATA)
 
@@ -205,16 +265,27 @@ async def intro_sheet_route() -> Response:
     request_id: Optional[str] = payload.get("RequestID")
     excel_data: list[dict] = payload.get("excelData", [])
 
-    logger.info("Received /intro-sheet webhook callback (RequestID=%s, RowsCount=%d).", request_id, len(excel_data))
+    logger.info(
+        "Received /intro-sheet webhook callback (RequestID=%s, RowsCount=%d).",
+        request_id,
+        len(excel_data),
+    )
 
     try:
         df = pd.DataFrame(excel_data)
         if _fulfill_pending_future(request_id, result=df):
-            logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
+            logger.debug(
+                "Successfully fulfilled pending request RequestID=%s", request_id
+            )
         else:
-            logger.warning("Received /intro-sheet callback for unknown or expired RequestID=%s", request_id)
+            logger.warning(
+                "Received /intro-sheet callback for unknown or expired RequestID=%s",
+                request_id,
+            )
     except Exception as e:
-        logger.error("Failed to parse intro-sheet data for RequestID=%s: %s", request_id, e)
+        logger.error(
+            "Failed to parse intro-sheet data for RequestID=%s: %s", request_id, e
+        )
         _fulfill_pending_future(request_id, exception=e)
 
     return jsonify(EMPTY_DATA)
@@ -230,16 +301,27 @@ async def sheet_303_route() -> Response:
     request_id: Optional[str] = payload.get("RequestID")
     excel_data: list[dict] = payload.get("excelData", [])
 
-    logger.info("Received /303-sheet webhook callback (RequestID=%s, RowsCount=%d).", request_id, len(excel_data))
+    logger.info(
+        "Received /303-sheet webhook callback (RequestID=%s, RowsCount=%d).",
+        request_id,
+        len(excel_data),
+    )
 
     try:
         df = pd.DataFrame(excel_data)
         if _fulfill_pending_future(request_id, result=df):
-            logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
+            logger.debug(
+                "Successfully fulfilled pending request RequestID=%s", request_id
+            )
         else:
-            logger.warning("Received /303-sheet callback for unknown or expired RequestID=%s", request_id)
+            logger.warning(
+                "Received /303-sheet callback for unknown or expired RequestID=%s",
+                request_id,
+            )
     except Exception as e:
-        logger.error("Failed to parse 303-sheet data for RequestID=%s: %s", request_id, e)
+        logger.error(
+            "Failed to parse 303-sheet data for RequestID=%s: %s", request_id, e
+        )
         _fulfill_pending_future(request_id, exception=e)
 
     return jsonify(EMPTY_DATA)

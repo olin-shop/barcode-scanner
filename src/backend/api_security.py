@@ -3,11 +3,13 @@ API Key rotation and security module.
 Generates, stores, and loads rotating API keys for Power Automate authentication.
 """
 
-import os
+import sys
 import logging
+import os
 import secrets
-from typing import Optional
 from pathlib import Path
+from typing import Optional
+
 from dotenv import load_dotenv, set_key
 
 logger = logging.getLogger(__name__)
@@ -17,8 +19,6 @@ ENV_FILE = Path(__file__).parent.parent.parent / ".env"
 _current_key: Optional[str] = None
 _old_key: Optional[str] = None
 
-
-import sys
 
 def load_keys() -> None:
     """Loads the keys from the .env file into memory. Prompts for setup if they don't exist."""
@@ -112,7 +112,6 @@ def get_old_key() -> str:
     if _old_key is None:
         load_keys()
     return _old_key or secrets.token_urlsafe(32)
-
 
 
 # Ensure keys are loaded when module is imported

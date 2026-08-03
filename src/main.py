@@ -5,7 +5,6 @@ and the CustomTkinter GUI in the main thread.
 """
 
 import threading
-import sys
 import logging
 
 from backend.endpoints import quart_app
@@ -32,12 +31,14 @@ def run_backend() -> None:
     asyncio.set_event_loop(loop)
 
     config = Config()
-    config.bind = [f"0.0.0.0:{PORT}"]
+    config.bind = [f"{HOST_IP}:{PORT}"]
     shutdown_event = asyncio.Event()
 
     try:
         logger.info("Starting Hypercorn backend server on 0.0.0.0:%d...", PORT)
-        loop.run_until_complete(serve(quart_app, config, shutdown_trigger=shutdown_event.wait))
+        loop.run_until_complete(
+            serve(quart_app, config, shutdown_trigger=shutdown_event.wait)
+        )
     except Exception as e:
         logger.error("Backend server error: %s", e, exc_info=True)
 
@@ -52,7 +53,9 @@ def main() -> None:
     """
     Main orchestration method.
     """
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    )
     logger.info("Starting barcode scanner application...")
 
     backend_thread = threading.Thread(target=run_backend, daemon=True)

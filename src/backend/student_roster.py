@@ -3,12 +3,13 @@ Student Roster Manager
 Handles loading, storing, and querying student name and email records.
 """
 
-from dataclasses import dataclass
-from pathlib import Path
 import csv
 import logging
-import pandas as pd
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
+
+import pandas as pd
 
 # --- Logger Configuration ---
 # Global logger instance for student roster operations
@@ -21,6 +22,7 @@ class StudentRecord:
     """
     Data model representing a single student record with a name and email.
     """
+
     name: str
     email: str
 
@@ -96,7 +98,9 @@ class RosterManager:
                         seen_emails.add(email.lower())
                         records.append(StudentRecord(name=name, email=email))
             except Exception as e:
-                logger.error("Error parsing DataFrame row in load_from_dataframes: %s", e)
+                logger.error(
+                    "Error parsing DataFrame row in load_from_dataframes: %s", e
+                )
 
         if records:
             self.students = records
@@ -114,5 +118,3 @@ class RosterManager:
 # --- Global Singleton Instance ---
 # Shared singleton roster instance accessed across GUI pages and controllers
 roster = RosterManager()
-
-

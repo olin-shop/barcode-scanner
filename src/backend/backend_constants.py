@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 
 if not os.environ.get("NAME_URL"):
     logger.error("Missing .env file!")
-    logger.error("Please ask Shop Instructors for the .env file for the barcode scanner before testing and developing.")
+    logger.error(
+        "Please ask Shop Instructors for the .env file for the barcode scanner before testing and developing."
+    )
 
 try:
     NAME_URL: str = os.environ["NAME_URL"]
@@ -30,8 +32,12 @@ try:
 
     PORT: int = int(os.environ["PORT"])
 
-    HOST_IP: str = os.environ["HOST_IP"]
-    logger.info("Loaded backend environment constants successfully (Host: %s:%d).", HOST_IP, PORT)
+    HOST_IP: str = "0.0.0.0"
+    logger.info(
+        "Loaded backend environment constants successfully (Host: %s:%d).",
+        HOST_IP,
+        PORT,
+    )
 except KeyError as err:
     logger.error("Required environment variable missing from .env: %s", err)
     raise
@@ -55,6 +61,8 @@ OVERDUE_AFTER_DAYS: int = int(os.environ.get("OVERDUE_AFTER_DAYS", 14))
 
 # Local hour (0-23) at which the daily overdue check/reminder run fires.
 REMINDER_HOUR: int = int(os.environ.get("REMINDER_HOUR", 8))
+
+DAY_IN_SECONDS: int = 86400
 
 db_to_class_conversion: dict[str, str] = {
     "Name": "name",
