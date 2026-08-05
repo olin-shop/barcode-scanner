@@ -47,6 +47,14 @@ class App(ctk.CTk):
             False  # Busy guard to prevent duplicate scan processing
         )
 
+        # Thread-safe queue for async background callbacks
+        self._async_queue: queue.Queue = queue.Queue()
+        self._poll_async_queue()
+
+        # Background asyncio loop
+        self.loop = asyncio.new_event_loop()
+        threading.Thread(target=self.loop.run_forever, daemon=True).start()
+
         # Build pages
         self.frames = {}
         for F in (
@@ -74,14 +82,6 @@ class App(ctk.CTk):
         self._current_scale = 1.0
         self.bind("<Key>", self._on_key)
         self.bind("<Configure>", self._on_window_resize)
-
-        # Thread-safe queue for async background callbacks
-        self._async_queue: queue.Queue = queue.Queue()
-        self._poll_async_queue()
-
-        # Background asyncio loop
-        self.loop = asyncio.new_event_loop()
-        threading.Thread(target=self.loop.run_forever, daemon=True).start()
 
         # Show initial page
         self.show_frame("HomePage")
