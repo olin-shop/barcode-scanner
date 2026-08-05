@@ -8,6 +8,7 @@ import customtkinter as ctk
 
 from GUI import gui_constants as const
 from GUI.session_manager import SessionManager
+from backend.app_state import load_cache_from_disk, save_cache_to_disk
 from GUI.HomePage import HomePage
 from GUI.SelectUserPage import SelectUserPage
 from GUI.BorrowedItemsPage import BorrowedItemsPage
@@ -83,8 +84,23 @@ class App(ctk.CTk):
         self.bind("<Key>", self._on_key)
         self.bind("<Configure>", self._on_window_resize)
 
+        # Protocol for window close
+        self.protocol("WM_DELETE_WINDOW", self._on_closing)
+
+        # Load local sheet cache if available
+        load_cache_from_disk()
+
         # Show initial page
         self.show_frame("HomePage")
+
+    def _on_closing(self) -> None:
+        """Called when the application window is closed."""
+        logger.info("Application shutting down. Saving caches...")
+        save_cache_to_disk()
+        
+        # Room for future cleanup routines here
+
+        self.destroy()
 
     def _on_window_resize(self, event) -> None:
         """Dynamically update app scale factor when main window is resized."""
