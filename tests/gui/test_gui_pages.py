@@ -59,6 +59,10 @@ def test_app_initialization(gui_app: App) -> None:
 @requires_gui
 def test_app_show_frame_and_timeout_timer(gui_app: App) -> None:
     """Verifies show_frame switches visible frame and manages session timeout timer."""
+    # HomePage should NOT have a timeout timer active
+    gui_app.show_frame("HomePage")
+    assert gui_app._timeout_job is None
+
     # Show BorrowedItemsPage - should start timeout job
     gui_app.show_frame("BorrowedItemsPage")
     assert gui_app._timeout_job is not None
@@ -66,6 +70,40 @@ def test_app_show_frame_and_timeout_timer(gui_app: App) -> None:
     # Switch to SessionTimeoutPage - should cancel timeout job
     gui_app.show_frame("SessionTimeoutPage")
     assert gui_app._timeout_job is None
+
+    # Return to HomePage - should remain None (no timeout)
+    gui_app.show_frame("HomePage")
+    assert gui_app._timeout_job is None
+
+
+@requires_gui
+def test_homepage_tap_navigates_to_select_user(gui_app: App) -> None:
+    """Verifies tapping HomePage, card, or labels switches to SelectUserPage."""
+    gui_app.show_frame("HomePage")
+    home_page = gui_app.frames["HomePage"]
+
+    # Verify _on_tap switches page to SelectUserPage
+    home_page._on_tap()
+    assert gui_app._current_page_name() == "SelectUserPage"
+
+    # Verify event bindings exist on card canvas and header label
+    assert home_page.card._canvas.bind("<Button-1>") is not None
+    assert home_page.header_label._label.bind("<Button-1>") is not None
+
+
+
+
+
+@requires_gui
+def test_homepage_dispatch_id_barcode(gui_app: App, mocker: MockerFixture) -> None:
+    """Verifies scanning an ID barcode on HomePage dispatches _handle_id_scan."""
+    mock_handle_id = mocker.patch.object(gui_app, "_handle_id_scan")
+    gui_app.show_frame("HomePage")
+
+    gui_app._dispatch_barcode("USER_ID_123")
+
+    mock_handle_id.assert_called_once_with("USER_ID_123")
+
 
 
 @requires_gui

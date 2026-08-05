@@ -91,7 +91,7 @@ def _resolve_din_font_family() -> str:
         if din_families:
             print(f"[gui_constants] Found DIN font families in system: {din_families}")
             return din_families[0]
-    except (OSError, RuntimeError, TypeError, AttributeError) as e:
+    except Exception as e:
         print(f"[gui_constants] Exception querying font families: {e}")
     return "DIN OT"
 

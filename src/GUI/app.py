@@ -171,13 +171,15 @@ class App(ctk.CTk):
         self._reset_timeout_timer(page_name)
 
     def _reset_timeout_timer(self, page_name: str) -> None:
-        """Cancel any running timer; start a new one unless we're on ScanIDPage."""
+        """Cancel any running timer; start a new one unless we're on HomePage, idle, or transient pages."""
         if self._timeout_job is not None:
             self.after_cancel(self._timeout_job)
             self._timeout_job = None
 
         if page_name not in (
+            "HomePage",
             "ScanIDPage",
+            "SelectUserPage",
             "SessionTimeoutPage",
             "FinalConfirmationPage",
             "InvalidUserPage",
@@ -252,7 +254,7 @@ class App(ctk.CTk):
         """Route a completed barcode scan based on the currently visible page."""
         current = self._current_page_name()
 
-        if current in ("ScanIDPage", "SelectUserPage"):
+        if current in ("HomePage", "ScanIDPage", "SelectUserPage"):
             self._handle_id_scan(barcode)
         elif current == "BorrowedItemsPage":
             self._handle_item_scan(barcode)
