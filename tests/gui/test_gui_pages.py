@@ -315,3 +315,23 @@ def test_borrowed_items_page_home_button(gui_app: App) -> None:
 
     assert gui_app.session.current_user_name == ""
     assert gui_app._current_page_name() == "HomePage"
+
+
+@pytest.mark.asyncio
+async def test_roster_refresh_from_backend(mocker: MockerFixture) -> None:
+    """Verifies roster.refresh_from_backend calls gather_intro_data and gather_303_data."""
+    import pandas as pd
+    from backend.student_roster import roster
+
+    df1 = pd.DataFrame([{"Name": "Alice Intro", "Email": "aintro@olin.edu"}])
+    df2 = pd.DataFrame([{"Name": "Bob 303", "Email": "b303@olin.edu"}])
+
+    mocker.patch("backend.requests.gather_intro_data", return_value=df1)
+    mocker.patch("backend.requests.gather_303_data", return_value=df2)
+
+    students = await roster.refresh_from_backend()
+
+    names = [s.name for s in students]
+    assert "Alice Intro" in names
+    assert "Bob 303" in names
+

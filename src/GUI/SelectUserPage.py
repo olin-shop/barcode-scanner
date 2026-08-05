@@ -200,13 +200,23 @@ class SelectUserPage(ctk.CTkFrame):
             app.show_frame("HomePage")
 
     def load_students(self) -> None:
-        """Loads all students from roster."""
+        """Loads all students from roster and triggers background refresh via gather_intro_data & gather_303_data."""
         self._all_students = roster.get_all_students()
         self._filtered_students = self._all_students.copy()
         self._selected_student = None
         self.search_entry.delete(0, "end")
         self.next_button.configure(state="disabled")
         self._hide_dropdown()
+
+        app = self.winfo_toplevel()
+        if hasattr(app, "run_async"):
+            def _on_roster_loaded(_):
+                if hasattr(self, "winfo_exists") and self.winfo_exists():
+                    self._all_students = roster.get_all_students()
+                    self._on_type_search()
+
+            app.run_async(roster.refresh_from_backend(), _on_roster_loaded)
+
 
     def _toggle_dropdown(self) -> None:
         """Toggles the scrollable dropdown list open/closed."""
