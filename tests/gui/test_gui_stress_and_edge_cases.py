@@ -101,6 +101,9 @@ def test_loading_page_minimum_display_duration_enforced(
         min_display_ms=250,
     )
 
+    # Force Tkinter to process the after(0) LoadingPage trigger BEFORE we sleep
+    gui_app.update()
+
     for _ in range(50):
         time.sleep(0.02)
         gui_app.update_idletasks()
