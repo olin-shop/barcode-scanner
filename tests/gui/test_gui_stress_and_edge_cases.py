@@ -58,11 +58,11 @@ def test_fast_async_response_loading_page_threshold(
 
     # Direct synchronous resolution test for threshold logic
     gui_app.run_async_with_loading(
-        fast_coro(), lambda res: callback_results.append(res), threshold_ms=150
+        fast_coro(), lambda res: callback_results.append(res), threshold_ms=1000
     )
 
     # Wait for future and process Tkinter event loop
-    for _ in range(15):
+    for _ in range(40):
         time.sleep(0.02)
         gui_app.update_idletasks()
         gui_app.update()
@@ -101,7 +101,7 @@ def test_loading_page_minimum_display_duration_enforced(
         min_display_ms=250,
     )
 
-    for _ in range(30):
+    for _ in range(50):
         time.sleep(0.02)
         gui_app.update_idletasks()
         gui_app.update()

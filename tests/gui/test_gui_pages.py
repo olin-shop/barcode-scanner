@@ -95,14 +95,14 @@ def test_homepage_tap_navigates_to_select_user(gui_app: App) -> None:
 
 
 @requires_gui
-def test_homepage_dispatch_id_barcode(gui_app: App, mocker: MockerFixture) -> None:
-    """Verifies scanning an ID barcode on HomePage dispatches _handle_id_scan."""
+def test_homepage_dispatch_id_barcode_ignored(gui_app: App, mocker: MockerFixture) -> None:
+    """Verifies scanning a barcode on HomePage is ignored (no longer supported)."""
     mock_handle_id = mocker.patch.object(gui_app, "_handle_id_scan")
     gui_app.show_frame("HomePage")
 
     gui_app._dispatch_barcode("USER_ID_123")
 
-    mock_handle_id.assert_called_once_with("USER_ID_123")
+    mock_handle_id.assert_not_called()
 
 
 
@@ -144,14 +144,14 @@ def test_barcode_key_event_routing(gui_app: App, mocker: MockerFixture) -> None:
 
 @requires_gui
 def test_dispatch_barcode_handlers(gui_app: App, mocker: MockerFixture) -> None:
-    """Verifies _dispatch_barcode routes ID scan on SelectUserPage and item scan on BorrowedItemsPage."""
+    """Verifies _dispatch_barcode routes item scan on BorrowedItemsPage and ignores scans elsewhere."""
     mock_handle_id = mocker.patch.object(gui_app, "_handle_id_scan")
     mock_handle_item = mocker.patch.object(gui_app, "_handle_item_scan")
 
     # On SelectUserPage
     gui_app.show_frame("SelectUserPage")
     gui_app._dispatch_barcode("ID_BARCODE")
-    mock_handle_id.assert_called_once_with("ID_BARCODE")
+    mock_handle_id.assert_not_called()
 
     # On BorrowedItemsPage
     gui_app.show_frame("BorrowedItemsPage")
