@@ -105,7 +105,7 @@ def fake_power_automate(
         assert "x-api-key" in headers, "x-api-key header is missing!"
 
         req_id = json.get("RequestID")
-        api_key_header = {"x-api-key": headers["x-api-key"]}
+        api_key_header = {"x-api-key": headers.get("x-new-key", headers["x-api-key"])}
 
         async def trigger_callback() -> None:
             try:

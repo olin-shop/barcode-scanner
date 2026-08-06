@@ -33,9 +33,8 @@ async def running_server() -> AsyncGenerator[None, None]:
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.skipif(
-        os.environ.get("NAME_URL") == "http://fake-url/names"
-        or not os.environ.get("NAME_URL"),
-        reason="Skipping live integration tests without real Power Automate URLs.",
+        os.environ.get("RUN_LIVE_TESTS") != "1",
+        reason="Skipping live integration tests because RUN_LIVE_TESTS=1 is not set. These require a live reverse proxy (e.g., ngrok) to receive webhooks.",
     ),
 ]
 
