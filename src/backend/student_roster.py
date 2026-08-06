@@ -36,25 +36,15 @@ class RosterManager:
 
     def load_dataframe(self, df: pd.DataFrame) -> None:
         """
-        Loads student records from a single pandas DataFrame containing 'Name' and 'Email' columns.
+        Loads student records from a single pandas DataFrame.
         """
-        try:
-            records = []
-            for _, row in df.iterrows():
-                name = str(row.get("Name", "")).strip()
-                email = str(row.get("Email", "")).strip()
-                if name and email and name.lower() != "nan" and email.lower() != "nan":
-                    records.append(StudentRecord(name=name, email=email))
-            if records:
-                self.students = records
-                logger.info("Loaded %d student records from DataFrame.", len(records))
-        except (AttributeError, KeyError, ValueError, TypeError) as e:
-            logger.error("Failed to load student roster from DataFrame: %s", e)
+        self.load_from_dataframes(df)
 
     def load_from_dataframes(self, *dfs: Optional[pd.DataFrame]) -> None:
         """
         Merges student records from multiple pandas DataFrames (e.g., intro sheet and 303 sheet).
         De-duplicates records based on unique email addresses.
+        Checks for 'Training Complete' flag if present.
         """
         seen_emails = set()
         records = []
@@ -63,8 +53,31 @@ class RosterManager:
                 continue
             try:
                 for _, row in df.iterrows():
-                    name = str(row.get("Name", "")).strip()
-                    email = str(row.get("Email", "")).strip()
+                    # Extract name
+                    name_raw = row.get("Name")
+                    if pd.isna(name_raw) or not str(name_raw).strip():
+                        name_raw = row.get("Trainee Name", "")
+                    name = str(name_raw).strip()
+
+                    # Extract email
+                    email_raw = row.get("Email")
+                    if pd.isna(email_raw) or not str(email_raw).strip():
+                        email_raw = row.get("Trainee Email", "")
+                    email = str(email_raw).strip()
+
+                    # Check training complete if column exists
+                    if "Training Complete" in row.index:
+                        tc = row.get("Training Complete")
+                        if pd.isna(tc):
+                            continue
+                        if isinstance(tc, bool):
+                            if not tc:
+                                continue
+                        else:
+                            tc_str = str(tc).strip().lower()
+                            if tc_str not in ("true", "yes", "1", "on", "checked", "t", "y"):
+                                continue
+
                     if (
                         name
                         and email
