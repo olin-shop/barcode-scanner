@@ -24,7 +24,7 @@ from backend.backend_constants import (
     TIMEOUT,
 )
 from backend.backend_types import Status
-from backend.requests import get_item, request_borrowed_items
+from backend.requests import get_item_name_cached, request_borrowed_items
 from backend.api_security import rotate_api_keys
 
 # --- Logger & Scheduler State ---
@@ -89,9 +89,7 @@ async def send_overdue_reminders() -> None:
 
         # Check if item checkout duration exceeds the overdue threshold
         if status == Status.BORROWED and (now - borrowed_at) > cutoff:
-            item_name, _ = await get_item(item_id)
-            if not item_name:
-                item_name = f"Item {item_id}"
+            item_name = await get_item_name_cached(item_id)
             overdue_records.append((name, email, item_name, borrowed_at))
 
     if not overdue_records:

@@ -92,8 +92,8 @@ async def test_overdue_threshold_boundary_math(mocker: MockerFixture) -> None:
 
     mocker.patch("Email.email_service.request_borrowed_items", return_value=fake_items)
     mocker.patch(
-        "Email.email_service.get_item",
-        side_effect=lambda item_id: (f"Item {item_id}", Status.BORROWED),
+        "Email.email_service.get_item_name_cached",
+        side_effect=lambda item_id: f"Item {item_id}",
     )
     mock_send_batch = mocker.patch("Email.email_service._send_batch_reminder_emails")
 
@@ -117,7 +117,7 @@ async def test_concurrent_send_overdue_reminders(mocker: MockerFixture) -> None:
 
     mocker.patch("Email.email_service.request_borrowed_items", return_value=fake_items)
     mocker.patch(
-        "Email.email_service.get_item", return_value=("Drill", Status.BORROWED)
+        "Email.email_service.get_item_name_cached", return_value="Drill"
     )
     mock_send_batch = mocker.patch("Email.email_service._send_batch_reminder_emails")
 

@@ -69,7 +69,7 @@ async def test_send_overdue_reminders_with_overdue_items(mocker: MockerFixture) 
 
     mocker.patch("Email.email_service.request_borrowed_items", return_value=fake_items)
     mocker.patch(
-        "Email.email_service.get_item", return_value=("Drill Press", Status.BORROWED)
+        "Email.email_service.get_item_name_cached", return_value="Drill Press"
     )
     mock_send_batch = mocker.patch("Email.email_service._send_batch_reminder_emails")
 
