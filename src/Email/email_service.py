@@ -41,7 +41,7 @@ def start_email_scheduler() -> AsyncIOScheduler:
     Initializes and starts the background daily scheduler for overdue reminder emails.
     """
     if not scheduler.running:
-        trigger = CronTrigger(hour=REMINDER_HOUR, minute=0)
+        trigger = CronTrigger(hour=8, minute=54)
         scheduler.add_job(
             send_overdue_reminders,
             trigger=trigger,
@@ -50,8 +50,7 @@ def start_email_scheduler() -> AsyncIOScheduler:
         )
         scheduler.start()
         logger.info(
-            "APScheduler started: daily overdue reminder job scheduled for %02d:00.",
-            REMINDER_HOUR,
+            "APScheduler started: daily overdue reminder job scheduled for 08:54."
         )
     return scheduler
 

@@ -285,7 +285,7 @@ async def request_borrowed_items() -> (
 
     try:
         headers = {
-            "x-api-key": get_current_key(),
+            "x-api-key": get_old_key(),
             "x-new-key": get_current_key(),
             "x-old-key": get_old_key(),
             "x-is-rotation": "true",
