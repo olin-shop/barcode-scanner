@@ -47,7 +47,6 @@ def test_app_initialization(gui_app: App) -> None:
         "FinalConfirmationPage",
         "SessionTimeoutPage",
         "LoadingPage",
-        "InvalidUserPage",
         "InvalidItemIDPage",
         "InvalidItemPage",
     }

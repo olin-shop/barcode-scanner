@@ -46,6 +46,11 @@ class RosterManager:
         De-duplicates records based on unique email addresses.
         Checks for 'Training Complete' flag if present.
         """
+        df_ids = tuple(id(df) for df in dfs if df is not None)
+        if getattr(self, '_last_df_ids', None) == df_ids:
+            return
+        self._last_df_ids = df_ids
+
         seen_emails = set()
         records = []
         for df in dfs:

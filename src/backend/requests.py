@@ -13,7 +13,7 @@ import pandas as pd
 import requests_async as requests
 
 from backend.api_security import get_current_key, get_old_key
-from backend.app_state import pending_requests, sheet_cache
+from backend.app_state import pending_requests, sheet_cache, item_cache
 from backend.backend_constants import (
     BORROWED_ITEMS_URL,
     CHECKOUT_URL,
@@ -151,6 +151,9 @@ async def get_item(barcode: int) -> Optional[tuple[str, Status]]:
             barcode,
             request_id,
         )
+        if result:
+            item_name, status = result
+            item_cache[barcode] = item_name
         return result
     except asyncio.TimeoutError:
         pending_requests.pop(request_id, None)
@@ -164,6 +167,19 @@ async def get_item(barcode: int) -> Optional[tuple[str, Status]]:
         logger.error("Data error in get_item for RequestID=%s: %s", request_id, e)
         return None
 
+async def get_item_name_cached(barcode: int) -> str:
+    """
+    Returns the item name for a given barcode, checking the local cache first.
+    If it's not cached, it awaits get_item(barcode) to query the backend and populate the cache.
+    """
+    if barcode in item_cache:
+        return item_cache[barcode]
+
+    res = await get_item(barcode)
+    if res:
+        item_name, _ = res
+        return item_name
+    return f"Item ({barcode})"
 
 async def checkout(user_info: UserInfoPayload) -> bool:
     """

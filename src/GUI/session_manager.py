@@ -9,7 +9,7 @@ from typing import Any
 from backend.backend_constants import min_datetime
 from backend.backend_types import BorrowedItem, Status, UserInfoPayload, to_item_id
 from backend.requests import checkout as backend_checkout
-from backend.requests import get_item, get_name
+from backend.requests import get_item_name_cached, get_name, get_item
 
 logger = logging.getLogger(__name__)
 
@@ -111,17 +111,9 @@ class SessionManager:
         """
         res = await get_name(user_barcode)
         if res is None:
-            logger.warning(
-                "get_name returned None for user_barcode=%s (timeout or network error)",
-                user_barcode,
-            )
-            self.current_user_name = ""
-            self.current_user_email = ""
-            return []
+            return None
 
-        name, email, time_borrowed, statuses, item_ids = res
-        self.current_user_name = name
-        self.current_user_email = email
+        _, _, time_borrowed, statuses, item_ids = res
 
         if not item_ids:
             logger.info("No borrowed items found for user=%s", user_barcode)
@@ -132,7 +124,7 @@ class SessionManager:
             if status != Status.BORROWED:
                 continue
 
-            item_name, _status = await get_item(item_id)
+            item_name = await get_item_name_cached(item_id)
             if not item_name:
                 logger.warning(
                     "Could not resolve item id=%s for user=%s", item_id, user_barcode

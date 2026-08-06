@@ -17,8 +17,7 @@ from GUI.ReturnPage import ConfirmReturnPage
 from GUI.ConfirmationPage import FinalConfirmationPage
 from GUI.TimeoutPage import SessionTimeoutPage
 from GUI.LoadingPage import LoadingPage
-from GUI.InvalidUserPage import InvalidUserPage
-from GUI.InvalidItemPage import InvalidItemIDPage, InvalidItemPage
+from GUI.InvalidItemPage import InvalidItemPage, InvalidItemIDPage
 from GUI.popup import show_popup
 
 logger = logging.getLogger(__name__)
@@ -67,7 +66,7 @@ class App(ctk.CTk):
             FinalConfirmationPage,
             SessionTimeoutPage,
             LoadingPage,
-            InvalidUserPage,
+            InvalidItemPage,
             InvalidItemIDPage,
         ):
             frame = F(self)
@@ -151,6 +150,11 @@ class App(ctk.CTk):
         self.current_page_name = page_name
         target_frame = self.frames[page_name]
 
+        if page_name == "SelectUserPage":
+            self._ignore_scans = True
+        else:
+            self._ignore_scans = False
+
         # Ensure all non-target frames remain in full position
         for name, frame in self.frames.items():
             if name != page_name:
@@ -195,11 +199,9 @@ class App(ctk.CTk):
 
         if page_name not in (
             "HomePage",
-            "ScanIDPage",
             "SelectUserPage",
             "SessionTimeoutPage",
             "FinalConfirmationPage",
-            "InvalidUserPage",
             "InvalidItemPage",
             "InvalidItemIDPage",
         ):
@@ -235,11 +237,6 @@ class App(ctk.CTk):
         """Show FinalConfirmationPage, then reset after the dismiss delay."""
         self.show_frame("FinalConfirmationPage")
         self.after(const.FINAL_CONFIRM_DISMISS_MS, self.reset_session)
-
-    def show_invalid_user_page(self) -> None:
-        """Show InvalidUserPage for TIMEOUT_DISMISS_MS, then return to HomePage."""
-        self.show_frame("InvalidUserPage")
-        self.after(const.TIMEOUT_DISMISS_MS, self.reset_session)
 
     def show_invalid_item_page(self) -> None:
         """Show InvalidItemPage for TIMEOUT_DISMISS_MS, then return to BorrowedItemsPage."""
@@ -327,9 +324,11 @@ class App(ctk.CTk):
         if self._current_page_name() in ("SessionTimeoutPage", "FinalConfirmationPage"):
             logger.info("Ignoring stale user-items response; session moved on.")
             return
-        if not self.session.current_user_name:
-            logger.warning("Scanned user ID not recognized or get_name returned empty.")
-            self.show_invalid_user_page()
+        if items is None:
+            logger.warning("Network timeout occurred while fetching user profile.")
+            from GUI.popup import show_popup
+            show_popup("Network timeout. Please try again.", self)
+            self.reset_session()
             return
         self.frames["BorrowedItemsPage"].load(
             items, user_name=self.session.current_user_name
