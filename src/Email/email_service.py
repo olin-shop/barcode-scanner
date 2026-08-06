@@ -78,24 +78,12 @@ async def send_overdue_reminders() -> None:
     now = datetime.now()
     cutoff = timedelta(days=OVERDUE_AFTER_DAYS)
 
-    # Standardize items structure (handles tuple of 3 lists or list of record tuples)
-    records: list[tuple[Any, ...]] = []
-    if isinstance(items, tuple) and len(items) == 3:
-        time_borrowed, statuses, item_ids = items
-        for borrowed_at, status, item_id in zip(time_borrowed, statuses, item_ids):
-            records.append(("", "", "", item_id, borrowed_at, status))
-    elif isinstance(items, list):
-        records = items
-
     overdue_records: list[tuple[str, str, str, datetime]] = []
 
     # Process each record and identify overdue items
-    for item_tuple in records:
+    for item_tuple in items:
         if len(item_tuple) == 6:
             user_id, name, email, item_id, borrowed_at, status = item_tuple
-        elif len(item_tuple) == 3:
-            user_id, name, email = "", "", ""
-            borrowed_at, status, item_id = item_tuple
         else:
             continue
 

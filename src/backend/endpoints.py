@@ -213,15 +213,15 @@ async def request_borrowed_items_route() -> Response:
         len(excel_data),
     )
 
-    time_borrowed: list[datetime] = []
-    statuses: list[Status] = []
-    item_ids: list[int] = []
+    records = []
 
     for row in excel_data:
         try:
             item_id: int = int(row.get("ItemID", 0))
             date_number: float = float(row.get("DateBorrowed", 0.0))
             status: Status = Status(row.get("ItemStatus", ""))
+            name: str = str(row.get("Name", ""))
+            email: str = str(row.get("Email", ""))
 
             if status == Status.NONE:
                 logger.error(
@@ -230,9 +230,9 @@ async def request_borrowed_items_route() -> Response:
                     request_id,
                 )
 
-            item_ids.append(item_id)
-            time_borrowed.append(from_excel_date(date_number))
-            statuses.append(status)
+            records.append(
+                ("", name, email, item_id, from_excel_date(date_number), status)
+            )
         except (ValueError, KeyError, TypeError) as e:
             logger.error(
                 "Corrupted row data in /borrowed-items callback for RequestID=%s: %s",
@@ -244,7 +244,7 @@ async def request_borrowed_items_route() -> Response:
             )
             return jsonify(EMPTY_DATA)
 
-    if _fulfill_pending_future(request_id, result=(time_borrowed, statuses, item_ids)):
+    if _fulfill_pending_future(request_id, result=records):
         logger.debug("Successfully fulfilled pending request RequestID=%s", request_id)
     else:
         logger.warning(

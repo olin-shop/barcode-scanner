@@ -202,7 +202,7 @@ async def test_get_item_flow(fake_power_automate: None) -> None:
 async def test_checkout_and_request_borrowed(fake_power_automate: None) -> None:
     """Tests the full flow of checking out an item and requesting the borrowed items list."""
     res_borrowed_initial = await request_borrowed_items()
-    _, _, ids = res_borrowed_initial
+    ids = [r[3] for r in res_borrowed_initial]
     assert 11134 not in ids
 
     payload: UserInfoPayload = {
@@ -217,7 +217,8 @@ async def test_checkout_and_request_borrowed(fake_power_automate: None) -> None:
     assert success is True
 
     res_borrowed_after = await request_borrowed_items()
-    _, statuses, ids = res_borrowed_after
+    ids = [r[3] for r in res_borrowed_after]
+    statuses = [r[5] for r in res_borrowed_after]
 
     drill_index = ids.index(11134)
     assert statuses[drill_index] == Status.BORROWED

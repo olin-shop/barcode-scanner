@@ -260,7 +260,7 @@ async def checkout(user_info: UserInfoPayload) -> bool:
 
 
 async def request_borrowed_items() -> (
-    Optional[tuple[list[datetime], list[Status], list[int]]]
+    Optional[list[tuple[str, str, str, int, datetime, Status]]]
 ):
     """
     Requests a list of all currently borrowed items for reminder purposes.
@@ -273,8 +273,8 @@ async def request_borrowed_items() -> (
 
     Returns
     -------
-    Optional[tuple[list[datetime], list[Status], list[int]]]
-        A tuple containing lists of all borrowed times, item statuses, and item IDs.
+    Optional[list[tuple[str, str, str, int, datetime, Status]]]
+        A list of tuples representing all borrowed items (user_id, name, email, item_id, time_borrowed, status).
         Returns None if the request fails or times out.
     """
     request_id: str = str(uuid.uuid4())

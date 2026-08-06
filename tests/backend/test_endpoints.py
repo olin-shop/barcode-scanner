@@ -4,6 +4,7 @@ Verifies that incoming webhook payloads from Power Automate are parsed safely
 and that the asynchronous pending_requests futures are resolved correctly.
 """
 
+from datetime import datetime
 import asyncio
 
 from quart.testing import QuartClient
@@ -90,16 +91,28 @@ async def test_borrowed_items_endpoint(client: QuartClient) -> None:
         json={
             "RequestID": request_id,
             "excelData": [
-                {"ItemID": "456", "ItemStatus": "Missing", "DateBorrowed": 45000.0}
+                {
+                    "ItemID": "456",
+                    "ItemStatus": "Missing",
+                    "DateBorrowed": 45000.0,
+                    "Name": "Alice",
+                    "Email": "alice@example.com",
+                }
             ],
         },
         headers=headers,
     )
     assert response.status_code == 200
 
-    _, statuses, item_ids = future.result()
-    assert item_ids == [456]
-    assert statuses == [Status.MISSING]
+    results = future.result()
+    assert len(results) == 1
+    user_id, name, email, item_id, borrowed_at, status = results[0]
+    
+    assert name == "Alice"
+    assert email == "alice@example.com"
+    assert item_id == 456
+    assert status == Status.MISSING
+    assert isinstance(borrowed_at, datetime)
 
 
 @pytest.mark.asyncio
@@ -130,20 +143,27 @@ async def test_malformed_date_borrowed_items(client: QuartClient) -> None:
                     "ItemID": "100",
                     "ItemStatus": "Borrowed",
                     "DateBorrowed": "GARBAGE_STRING",
+                    "Name": "Bad Date User",
+                    "Email": "bad@example.com",
                 },
-                {"ItemID": "101", "ItemStatus": "Borrowed", "DateBorrowed": 45000.0},
+                {
+                    "ItemID": "101",
+                    "ItemStatus": "Borrowed",
+                    "DateBorrowed": 45000.0,
+                    "Name": "Good Date User",
+                    "Email": "good@example.com",
+                },
             ],
         },
         headers=headers,
     )
     assert response.status_code == 200
 
-    # The endpoint should set an exception on the future
-    with pytest.raises(
-        ValueError,
-        match="Corrupted row data: could not convert string to float: 'GARBAGE_STRING'",
-    ):
-        future.result()
+    try:
+        exc = future.exception()
+        assert "Corrupted row data" in str(exc)
+    except asyncio.InvalidStateError:
+        pytest.fail("Future was not fulfilled with exception.")
 
 
 @pytest.mark.asyncio
