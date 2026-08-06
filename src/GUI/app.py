@@ -80,6 +80,7 @@ class App(ctk.CTk):
 
         # Wire up simulated barcode HID scanner entry and window resize scaling
         self._barcode_buffer = ""
+        self._last_key_time = 0.0
         self._current_scale = 1.0
         self.bind("<Key>", self._on_key)
         self.bind("<Configure>", self._on_window_resize)
@@ -221,6 +222,13 @@ class App(ctk.CTk):
         if self._timeout_job is not None:
             self.after_cancel(self._timeout_job)
             self._timeout_job = None
+            
+        if "SelectUserPage" in self.frames:
+            select_page = self.frames["SelectUserPage"]
+            select_page.search_entry.delete(0, "end")
+            select_page.load_students()
+            select_page._on_type_search()
+
         self.show_frame("HomePage")
 
     def start_final_confirmation(self) -> None:
@@ -257,7 +265,14 @@ class App(ctk.CTk):
         """
         Accumulates keypresses into a barcode buffer.
         Most USB HID barcode scanners end their transmission with <Return>.
+        Filters out manual typing by requiring keystrokes to be fast (< 0.05s).
         """
+        import time
+        current_time = time.time()
+        if current_time - self._last_key_time > 0.05:
+            self._barcode_buffer = ""
+        self._last_key_time = current_time
+
         if event.keysym in ("Return", "KP_Enter"):
             barcode = self._barcode_buffer.strip()
             self._barcode_buffer = ""
@@ -270,10 +285,10 @@ class App(ctk.CTk):
         """Route a completed barcode scan based on the currently visible page."""
         current = self._current_page_name()
 
-        if current in ("HomePage", "ScanIDPage", "SelectUserPage"):
-            self._handle_id_scan(barcode)
-        elif current == "BorrowedItemsPage":
+        if current == "BorrowedItemsPage":
             self._handle_item_scan(barcode)
+        else:
+            logger.info("Ignoring barcode scan on %s; scanning is now only for items on BorrowedItemsPage.", current)
 
     def _current_page_name(self) -> str | None:
         """Return the name of whichever page is currently raised."""

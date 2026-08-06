@@ -87,6 +87,7 @@ class SelectUserPage(ctk.CTkFrame):
         self.search_entry.place(relx=0.02, rely=0.5, anchor="w")
         self.search_entry.bind("<KeyRelease>", self._on_type_search)
         self.search_entry.bind("<FocusIn>", lambda e: self._show_dropdown())
+        self.search_entry.bind("<Return>", self._on_enter_pressed)
 
         self.current_arrow_frame_idx: int = 0
         self.is_arrow_hovered: bool = False
@@ -336,6 +337,13 @@ class SelectUserPage(ctk.CTkFrame):
         self.search_entry.insert(0, student.name)
         self.next_button.configure(state="normal")
         self._hide_dropdown()
+
+    def _on_enter_pressed(self, event=None) -> str | None:
+        """Handles Enter key press in the search bar. Submits if valid."""
+        if self._selected_student:
+            self._on_next_clicked()
+            return "break"
+        return None
 
     def _on_next_clicked(self) -> None:
         """Handles Next button click to start session and navigate to BorrowedItemsPage."""
