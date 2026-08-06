@@ -10,6 +10,7 @@ from datetime import datetime
 import pandas as pd
 
 from backend.backend_constants import DAY_IN_SECONDS
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ sheet_cache: dict[str, dict] = {
     "303": {"data": None, "timestamp": None},
 }
 
-CACHE_DIR = "cache"
+CACHE_DIR = Path(__file__).resolve().parent.parent / "cache"
 
 def save_cache_to_disk() -> None:
     """
