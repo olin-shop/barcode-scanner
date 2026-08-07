@@ -254,7 +254,7 @@ async def checkout(user_info: UserInfoPayload) -> bool:
             raise ValueError(f"HTTP dispatch status {res.status_code}")
     except (asyncio.TimeoutError, ValueError, KeyError, OSError, RuntimeError) as e:
         pending_requests.pop(request_id, None)
-        logger.error("Failed to send item_checkout request for item_id=%s: %s", item_id, e)
+        logger.error("Failed to send item_checkout request for request_id=%s: %s", request_id, e)
         return False
 
     try:
@@ -316,8 +316,8 @@ async def request_borrowed_items() -> (
             raise ValueError(f"HTTP dispatch status {res.status_code}")
     except (asyncio.TimeoutError, ValueError, KeyError, OSError, RuntimeError) as e:
         pending_requests.pop(request_id, None)
-        logger.error("Failed to send mark_missing request for item_id=%s: %s", item_id, e)
-        return False
+        logger.error("Failed to send request_borrowed_items request for request_id=%s: %s", request_id, e)
+        return None
 
     try:
         result = await asyncio.wait_for(future, timeout=15.0)

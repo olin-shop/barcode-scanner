@@ -427,7 +427,7 @@ class App(ctk.CTk):
         loading_job = self.after(threshold_ms, _show_loading)
 
         def _wrapped_callback(result: Any) -> None:
-            nonlocal loading_job, shown_timestamp
+            nonlocal loading_job
 
             # Cancel pending show_frame if LoadingPage has not appeared yet
             if loading_job is not None:

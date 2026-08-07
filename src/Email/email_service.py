@@ -8,7 +8,7 @@ import logging
 import smtplib
 from datetime import datetime, timedelta
 from email.message import EmailMessage
-from typing import Sequence, Any
+from typing import Sequence
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -16,7 +16,6 @@ from apscheduler.triggers.cron import CronTrigger
 from backend.backend_constants import (
     FROM_EMAIL,
     OVERDUE_AFTER_DAYS,
-    REMINDER_HOUR,
     SMTP_HOST,
     SMTP_PASSWORD,
     SMTP_PORT,

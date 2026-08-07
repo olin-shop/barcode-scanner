@@ -204,7 +204,7 @@ class BorrowedItemsPage(ctk.CTkFrame):
         is the source of truth here — this just re-renders to match it.
         """
         self._item_barcodes.pop(item_name, None)
-        master: App = self.master
+        master = self.master
         session = getattr(master, "session", None)
         items = session.user_items if session else []
         user_name = session.current_user_name if session else None

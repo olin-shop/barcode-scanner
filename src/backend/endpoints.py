@@ -13,7 +13,7 @@ from quart import Quart, request, Response, jsonify, abort
 from backend.backend_types import Status
 from backend.backend_constants import from_excel_date, EMPTY_DATA
 from backend.app_state import pending_requests
-from backend.api_security import get_current_key
+from backend.api_security import get_current_key, get_old_key
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ async def verify_api_key():
     """
     if request.method == "POST":
         api_key = request.headers.get("x-api-key")
-        if not api_key or api_key != get_current_key():
+        if not api_key or (api_key != get_current_key() and api_key != get_old_key()):
             logger.warning(
                 "Unauthorized webhook access attempt from %s. Invalid x-api-key.",
                 request.remote_addr,
