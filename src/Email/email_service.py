@@ -24,7 +24,7 @@ from backend.backend_constants import (
 )
 from backend.backend_types import Status
 from backend.requests import get_item_name_cached, request_borrowed_items
-from backend.api_security import rotate_api_keys
+from backend.api_security import rotate_api_keys, revert_api_keys
 
 # --- Logger & Scheduler State ---
 # Global logger for recording reminder service execution
@@ -66,8 +66,15 @@ async def send_overdue_reminders() -> None:
 
         # Request borrowed items list from backend
         items = await request_borrowed_items()
+        
+        if items is None:
+            logger.error("[REMINDER] request_borrowed_items failed. Reverting API keys.")
+            revert_api_keys()
+            return
+
     except (asyncio.TimeoutError, ValueError, KeyError, OSError, RuntimeError) as e:
         logger.error("[REMINDER] Failed to fetch borrowed items: %s", e)
+        revert_api_keys()
         return
 
     if not items:

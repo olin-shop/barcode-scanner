@@ -100,6 +100,18 @@ def rotate_api_keys() -> None:
     logger.info("API keys successfully rotated.")
 
 
+def revert_api_keys() -> None:
+    """
+    Reverts the current API key back to the old API key in case a rotation
+    dispatch to Power Automate fails or times out.
+    """
+    global _current_key, _old_key
+    if _old_key:
+        _current_key = _old_key
+        _save_keys()
+        logger.warning("API keys successfully reverted to the old key.")
+
+
 def get_current_key() -> str:
     """Returns the current valid API key."""
     if _current_key is None:
