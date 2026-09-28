@@ -14,6 +14,11 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+# httpx and httpcore log every request URL at INFO. The flow trigger URLs carry a
+# "sig" secret that lets anyone run the flow, so keep them out of the kiosk log.
+for _noisy in ("httpx", "httpcore"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
+
 # Everything httpx can raise while sending a request. httpx.InvalidURL is listed
 # separately because it does not inherit from httpx.HTTPError.
 HTTP_ERRORS: tuple[type[BaseException], ...] = (httpx.HTTPError, httpx.InvalidURL)

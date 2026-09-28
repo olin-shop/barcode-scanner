@@ -82,3 +82,20 @@ async def test_http_failure_returns_none_and_cleans_up(
 
     assert await get_item(11134) is None
     assert len(pending_requests) == 0
+
+
+@pytest.mark.asyncio
+async def test_request_urls_are_not_logged(caplog: pytest.LogCaptureFixture) -> None:
+    """Flow URLs carry a secret "sig" parameter, so httpx must not log them."""
+    import logging
+
+    caplog.set_level(logging.DEBUG)
+    secret_url = "https://flow.example/trigger?sig=SECRET123"
+
+    await post_json(
+        secret_url,
+        json={},
+        transport=httpx.MockTransport(lambda request: httpx.Response(202)),
+    )
+
+    assert "SECRET123" not in caplog.text
