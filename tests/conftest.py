@@ -88,3 +88,32 @@ def clear_state() -> Generator[None, None, None]:
     """Clear any pending requests before each test to ensure complete isolation."""
     pending_requests.clear()
     yield
+
+
+@pytest.fixture(autouse=True)
+def isolate_api_keys(tmp_path, monkeypatch) -> Generator[None, None, None]:
+    """
+    Point api_security at a throwaway .env and restore the in-memory keys afterwards,
+    so no test (rotation, revert, commit) can ever rewrite the developer's real .env.
+    """
+    from backend import api_security
+
+    monkeypatch.setattr(api_security, "ENV_FILE", tmp_path / ".env")
+    for attr in ("_current_key", "_old_key"):
+        monkeypatch.setattr(api_security, attr, getattr(api_security, attr))
+    monkeypatch.setattr(api_security, "_pending_keys", list(api_security._pending_keys))
+    for var in ("CURRENT_API_KEY", "OLD_API_KEY", "PENDING_API_KEYS"):
+        if var in os.environ:
+            monkeypatch.setenv(var, os.environ[var])
+        else:
+            monkeypatch.delenv(var, raising=False)
+    yield
+
+
+@pytest.fixture(autouse=True)
+def isolate_cache_dir(tmp_path, monkeypatch) -> Generator[None, None, None]:
+    """Write sheet/item caches to a temp folder so tests never touch src/cache."""
+    from backend import app_state
+
+    monkeypatch.setattr(app_state, "CACHE_DIR", tmp_path / "cache")
+    yield

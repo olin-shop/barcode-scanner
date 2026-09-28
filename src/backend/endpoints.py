@@ -10,10 +10,10 @@ from typing import Optional, Any
 import pandas as pd
 from quart import Quart, request, Response, jsonify, abort
 
-from backend.backend_types import Status
+from backend.backend_types import FlowError, Status
 from backend.backend_constants import from_excel_date, EMPTY_DATA
 from backend.app_state import pending_requests
-from backend.api_security import get_current_key, get_old_key
+from backend.api_security import accepted_keys
 
 logger = logging.getLogger(__name__)
 
@@ -38,15 +38,40 @@ def _fulfill_pending_future(
     return True
 
 
+async def _read_payload() -> dict:
+    """
+    Returns the callback's JSON body, or an empty dict if the body is missing or isn't
+    valid JSON (so a malformed callback is logged instead of crashing the handler).
+    """
+    payload = await request.get_json(force=True, silent=True)
+    return payload if isinstance(payload, dict) else {}
+
+
+def _fail_if_flow_error(payload: dict, request_id: Optional[str], route: str) -> bool:
+    """
+    If the flow reported an error ({"RequestID": ..., "Error": "..."}), fails the waiting
+    request right away instead of letting it time out. Returns True when it did.
+    """
+    error = payload.get("Error")
+    if not error:
+        return False
+    logger.warning(
+        "Flow reported an error on %s (RequestID=%s): %s", route, request_id, error
+    )
+    _fulfill_pending_future(request_id, exception=FlowError(str(error)))
+    return True
+
+
 @quart_app.before_request
 async def verify_api_key():
     """
     Validates the x-api-key header on all incoming webhook requests.
+    Accepts the current, old, and any pending key (see api_security).
     Aborts the request with 401 Unauthorized if the key is missing or invalid.
     """
     if request.method == "POST":
         api_key = request.headers.get("x-api-key")
-        if not api_key or (api_key != get_current_key() and api_key != get_old_key()):
+        if not api_key or api_key not in accepted_keys():
             logger.warning(
                 "Unauthorized webhook access attempt from %s. Invalid x-api-key.",
                 request.remote_addr,
@@ -64,8 +89,10 @@ async def checkout() -> Response:
     transmission was successful, and uses it to fulfill the asynchronous placeholder.
     This un-pauses the original `checkout()` request in `requests.py`.
     """
-    payload: dict = await request.get_json()
+    payload: dict = await _read_payload()
     request_id: Optional[str] = payload.get("RequestID")
+    if _fail_if_flow_error(payload, request_id, "/checkout"):
+        return jsonify(EMPTY_DATA)
     has_been_sent: bool = payload.get("Sent") == "Received"
 
     logger.info(
@@ -94,8 +121,10 @@ async def get_item_route() -> Response:
     and enum status, extracts the unique request identifier, and fulfills the
     asynchronous placeholder to un-pause the original `get_item()` request.
     """
-    payload: dict = await request.get_json()
+    payload: dict = await _read_payload()
     request_id: Optional[str] = payload.get("RequestID")
+    if _fail_if_flow_error(payload, request_id, "/items"):
+        return jsonify(EMPTY_DATA)
     item_name: str = payload.get("ItemName", "")
     raw_status = payload.get("ItemStatus")
 
@@ -136,8 +165,10 @@ async def get_name_route() -> Response:
     unique request identifier, and fulfills the asynchronous placeholder to un-pause
     the original `get_name()` request.
     """
-    payload: dict = await request.get_json()
+    payload: dict = await _read_payload()
     request_id: Optional[str] = payload.get("RequestID")
+    if _fail_if_flow_error(payload, request_id, "/names"):
+        return jsonify(EMPTY_DATA)
 
     name: str = payload.get("Name", "")
     email: str = payload.get("Email", "")
@@ -203,8 +234,10 @@ async def request_borrowed_items_route() -> Response:
     fulfills the asynchronous placeholder to un-pause the original
     `request_borrowed_items()` request.
     """
-    payload: dict = await request.get_json()
+    payload: dict = await _read_payload()
     request_id: Optional[str] = payload.get("RequestID")
+    if _fail_if_flow_error(payload, request_id, "/borrowed-items"):
+        return jsonify(EMPTY_DATA)
     excel_data: list[dict] = payload.get("excelData", [])
 
     logger.info(
@@ -261,8 +294,10 @@ async def intro_sheet_route() -> Response:
     Receives the intro sheet data from the pipeline webhook.
     Converts the excelData list of dicts to a pandas DataFrame and fulfills the pending request.
     """
-    payload: dict = await request.get_json()
+    payload: dict = await _read_payload()
     request_id: Optional[str] = payload.get("RequestID")
+    if _fail_if_flow_error(payload, request_id, "/intro-sheet"):
+        return jsonify(EMPTY_DATA)
     excel_data: list[dict] = payload.get("excelData", [])
 
     logger.info(
@@ -297,8 +332,10 @@ async def sheet_303_route() -> Response:
     Receives the 303 sheet data from the pipeline webhook.
     Converts the excelData list of dicts to a pandas DataFrame and fulfills the pending request.
     """
-    payload: dict = await request.get_json()
+    payload: dict = await _read_payload()
     request_id: Optional[str] = payload.get("RequestID")
+    if _fail_if_flow_error(payload, request_id, "/303-sheet"):
+        return jsonify(EMPTY_DATA)
     excel_data: list[dict] = payload.get("excelData", [])
 
     logger.info(

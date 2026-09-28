@@ -4,21 +4,32 @@ Starts the Quart webhook backend/email scheduler in a background thread,
 and the CustomTkinter GUI in the main thread.
 """
 
+import asyncio
 import threading
 import logging
 
 from backend.endpoints import quart_app
 from backend.backend_constants import HOST_IP, PORT
+from backend.requests import keep_resolving_pending_keys
 from Email.email_service import start_email_scheduler
 from GUI.app import App
 
 logger = logging.getLogger(__name__)
 
+# Strong references to background tasks so they aren't garbage-collected mid-run.
+_background_tasks: set[asyncio.Task] = set()
+
 
 @quart_app.before_serving
 async def startup() -> None:
-    """Initialize the email scheduler right before Quart starts serving requests."""
+    """
+    Initialize the email scheduler and the pending API key check right before Quart
+    starts serving requests (the key check needs the server up to receive callbacks).
+    """
     start_email_scheduler()
+    task = asyncio.get_running_loop().create_task(keep_resolving_pending_keys())
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
 
 
 def run_backend() -> None:

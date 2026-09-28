@@ -22,6 +22,13 @@ def to_item_id(barcode: str) -> Optional[int]:
         return None
 
 
+class FlowError(Exception):
+    """
+    Raised when a Power Automate flow calls back with an "Error" field instead of data,
+    so the waiting request fails immediately rather than timing out.
+    """
+
+
 class Status(StrEnum):
     """
     String enum for status types.

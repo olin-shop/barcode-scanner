@@ -55,6 +55,23 @@ def save_cache_to_disk() -> None:
     except Exception as e:
         logger.error("Failed to save sheet cache to disk: %s", e)
 
+def save_sheet_cache_to_disk(key: str) -> None:
+    """
+    Saves one sheet's DataFrame ("intro" or "303") to CSV right after a successful fetch,
+    so a crash or power cut doesn't lose it (the full save only runs on a clean close).
+    """
+    try:
+        data = sheet_cache[key]["data"]
+        if data is None or not isinstance(data, pd.DataFrame):
+            return
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        path = os.path.join(CACHE_DIR, f"{key}_sheet.csv")
+        data.to_csv(path, index=False)
+        logger.info("Saved %s sheet cache to %s", key, path)
+    except Exception as e:
+        logger.error("Failed to save %s sheet cache to disk: %s", key, e)
+
+
 def load_cache_from_disk() -> None:
     """
     Loads sheet DataFrames from local CSV files if they are newer than 24 hours.

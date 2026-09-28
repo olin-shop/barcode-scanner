@@ -173,7 +173,7 @@ def fake_power_automate(
 
         return FakeResponse(200)
 
-    mocker.patch("backend.requests.requests.post", side_effect=mock_post)
+    mocker.patch("backend.requests.post_json", side_effect=mock_post)
     return fake_db
 
 
@@ -241,7 +241,7 @@ async def test_power_automate_failure_500(mocker: MockerFixture) -> None:
     async def mock_fail(*args: tuple, **kwargs: dict) -> FakeResponse:
         return FakeResponse(500)
 
-    mocker.patch("backend.requests.requests.post", side_effect=mock_fail)
+    mocker.patch("backend.requests.post_json", side_effect=mock_fail)
 
     res = await get_item(11134)
     assert res is None
@@ -256,7 +256,7 @@ async def test_power_automate_timeout(mocker: MockerFixture) -> None:
     async def mock_timeout(*args: tuple, **kwargs: dict) -> FakeResponse:
         return FakeResponse(200)  # Accepts, but no callback is ever sent
 
-    mocker.patch("backend.requests.requests.post", side_effect=mock_timeout)
+    mocker.patch("backend.requests.post_json", side_effect=mock_timeout)
     mocker.patch("backend.requests.asyncio.wait_for", side_effect=asyncio.TimeoutError)
 
     res = await get_name("jdoe@olin.edu")
