@@ -25,6 +25,7 @@ from backend.backend_constants import (
     SMTP_PORT,
     SMTP_USERNAME,
     TIMEOUT,
+    REMINDER_HOUR
 )
 from backend.backend_types import Status
 from backend.requests import get_item_name_cached, request_borrowed_items
@@ -44,7 +45,7 @@ def start_email_scheduler() -> AsyncIOScheduler:
     Initializes and starts the background daily scheduler for overdue reminder emails.
     """
     if not scheduler.running:
-        trigger = CronTrigger(hour=8, minute=54)
+        trigger = CronTrigger(hour=REMINDER_HOUR, minute=0)
         scheduler.add_job(
             send_overdue_reminders,
             trigger=trigger,
