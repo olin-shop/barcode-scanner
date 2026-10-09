@@ -366,10 +366,7 @@ async def gather_intro_data() -> Optional[pd.DataFrame]:
     try:
         headers = {"x-api-key": get_current_key()}
         res = await requests.post(
-            INTRO_URL, 
-            json={"RequestID": request_id}, 
-            headers=headers, 
-            timeout=TIMEOUT
+            INTRO_URL, json={"RequestID": request_id}, headers=headers, timeout=TIMEOUT
         )
         if res.status_code not in (200, 202):
             raise ValueError(f"HTTP dispatch status {res.status_code}")
@@ -426,10 +423,7 @@ async def gather_303_data() -> Optional[pd.DataFrame]:
     try:
         headers = {"x-api-key": get_current_key()}
         res = await requests.post(
-            ELEC_URL, 
-            json={"RequestID": request_id}, 
-            headers=headers, 
-            timeout=TIMEOUT
+            ELEC_URL, json={"RequestID": request_id}, headers=headers, timeout=TIMEOUT
         )
         if res.status_code not in (200, 202):
             raise ValueError(f"HTTP dispatch status {res.status_code}")

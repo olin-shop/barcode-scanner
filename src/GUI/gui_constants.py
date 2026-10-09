@@ -120,5 +120,5 @@ FINAL_CONFIRM_DISMISS_MS: int = 3_000
 # ---------------------------------------------------------------------------
 # Window
 # ---------------------------------------------------------------------------
-WINDOW_SIZE: str = "800x480"
+WINDOW_SIZE: str = "1024x600"
 WINDOW_TITLE: str = "Barcode System - Olin Shop"

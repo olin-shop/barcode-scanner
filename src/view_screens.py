@@ -45,7 +45,6 @@ from GUI.ReturnPage import ConfirmReturnPage
 from GUI.ConfirmationPage import FinalConfirmationPage
 from GUI.TimeoutPage import SessionTimeoutPage
 from GUI.LoadingPage import LoadingPage
-from GUI.InvalidUserPage import InvalidUserPage
 from GUI.InvalidItemPage import InvalidItemIDPage
 from backend.backend_types import BorrowedItem
 from datetime import datetime
@@ -60,7 +59,7 @@ class ScreenViewerApp(ctk.CTk):
         super().__init__()
 
         ctk.set_appearance_mode("light")
-        self.geometry("960x640")
+        self.geometry(const.WINDOW_SIZE)
         self.title("GUI Screen Visual Tester")
         self.configure(fg_color=const.BG_LIGHT_BLUE)
 
@@ -90,7 +89,6 @@ class ScreenViewerApp(ctk.CTk):
             FinalConfirmationPage,
             SessionTimeoutPage,
             LoadingPage,
-            InvalidUserPage,
             InvalidItemIDPage,
         ]
 

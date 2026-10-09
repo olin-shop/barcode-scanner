@@ -13,7 +13,11 @@ from typing import Sequence
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+import uuid
+import requests_async as requests
+
 from backend.backend_constants import (
+    EMAIL_WEBHOOK_URL,
     FROM_EMAIL,
     OVERDUE_AFTER_DAYS,
     SMTP_HOST,
@@ -24,7 +28,7 @@ from backend.backend_constants import (
 )
 from backend.backend_types import Status
 from backend.requests import get_item_name_cached, request_borrowed_items
-from backend.api_security import rotate_api_keys, revert_api_keys
+from backend.api_security import rotate_api_keys, revert_api_keys, get_current_key
 
 # --- Logger & Scheduler State ---
 # Global logger for recording reminder service execution
@@ -106,8 +110,57 @@ async def send_overdue_reminders() -> None:
         "[REMINDER] %d overdue item(s) found - sending reminders.", len(overdue_records)
     )
 
-    # Offload blocking SMTP email transmission to background thread
-    await asyncio.to_thread(_send_batch_reminder_emails, overdue_records)
+    if EMAIL_WEBHOOK_URL:
+        logger.info("[REMINDER] Dispatching reminders via Power Automate Email Webhook.")
+        await _send_power_automate_reminder_emails(overdue_records)
+    else:
+        # Offload blocking SMTP email transmission to background thread
+        await asyncio.to_thread(_send_batch_reminder_emails, overdue_records)
+
+
+async def _send_power_automate_reminder_emails(
+    overdue_records: Sequence[tuple[str, str, str, datetime]],
+) -> None:
+    """
+    Sends email notifications by calling the Power Automate Email Webhook.
+    """
+    valid_records = [rec for rec in overdue_records if rec[1]]
+    if not valid_records:
+        return
+
+    headers = {"Content-Type": "application/json", "x-api-key": get_current_key()}
+
+    for name, email, item_name, borrowed_at in valid_records:
+        days_out = (datetime.now() - borrowed_at).days
+        request_id = str(uuid.uuid4())
+        payload = {
+            "RequestID": request_id,
+            "ToEmail": email,
+            "StudentName": name or "Student",
+            "ItemName": item_name,
+            "DateBorrowed": borrowed_at.strftime("%b %d, %Y"),
+            "DaysOverdue": days_out,
+        }
+        try:
+            res = await requests.post(
+                EMAIL_WEBHOOK_URL, json=payload, headers=headers, timeout=TIMEOUT
+            )
+            if res.status_code in (200, 202):
+                logger.info(
+                    "[REMINDER] Sent Power Automate reminder to %s for '%s'.",
+                    email,
+                    item_name,
+                )
+            else:
+                logger.error(
+                    "[REMINDER] Power Automate webhook returned status %d for %s",
+                    res.status_code,
+                    email,
+                )
+        except (asyncio.TimeoutError, ValueError, KeyError, OSError, RuntimeError) as err:
+            logger.error(
+                "[REMINDER] Failed to send Power Automate email to %s: %s", email, err
+            )
 
 
 # --- SMTP Email Batch Processor ---

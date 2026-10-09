@@ -30,6 +30,8 @@ try:
 
     ELEC_URL: str = os.environ["ELEC_URL"]
 
+    EMAIL_WEBHOOK_URL: str = os.environ.get("EMAIL_WEBHOOK_URL", "")
+
     PORT: int = int(os.environ["PORT"])
 
     HOST_IP: str = "0.0.0.0"
